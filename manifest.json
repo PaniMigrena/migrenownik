@@ -1,0 +1,16 @@
+{
+  "name": "Dzienniczek Migren",
+  "short_name": "Migrena",
+  "description": "Prywatny dziennik ataków migreny — dane zapisywane wyłącznie lokalnie, na Twoim urządzeniu.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#17171b",
+  "theme_color": "#17171b",
+  "lang": "pl",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
