@@ -10,6 +10,7 @@
 <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png" />
 <link rel="apple-touch-icon" href="apple-touch-icon.png" />
 <meta name="theme-color" content="#17171b" />
+<meta name="mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-capable" content="yes" />
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
 <meta name="apple-mobile-web-app-title" content="Migrenownik" />
@@ -391,10 +392,16 @@ function HomeScreen({ entries, onNewAttack, onOpenStats, onClearAll, onEditEntry
             {todayLabelCap}
           </p>
           <h1
-            className="font-serif text-[26px] mt-1"
+            className="font-serif text-[26px] mt-1 flex items-center gap-2"
             style={{ color: COLORS.textPrimary }}
           >
             Dzienniczek Migren
+            <span
+              className="text-[10px] font-sans font-normal tracking-wide rounded-full px-2 py-0.5"
+              style={{ background: COLORS.surface2, color: COLORS.textSecondary, border: `1px solid ${COLORS.border}` }}
+            >
+              BETA
+            </span>
           </h1>
         </div>
         {entries.length > 0 && (
@@ -1769,6 +1776,32 @@ function StatsScreen({ entries, periodDays, onExportData, onImportData, onExport
             </div>
           )}
         </div>
+
+        {/* O aplikacji */}
+        <div
+          className="rounded-2xl p-4 border mt-5 mb-2"
+          style={{ background: COLORS.surface, borderColor: COLORS.border }}
+        >
+          <p className="text-sm mb-2" style={{ color: COLORS.textPrimary }}>O aplikacji</p>
+          <p className="text-[12px] leading-relaxed" style={{ color: COLORS.textSecondary }}>
+            Migrenownik jest narzędziem do prowadzenia własnych notatek dotyczących migreny.
+            Nie jest wyrobem medycznym, nie stawia diagnoz i nie zastępuje konsultacji z lekarzem.
+          </p>
+          <p className="text-[12px] leading-relaxed mt-2" style={{ color: COLORS.textSecondary }}>
+            Wersja testowa (Beta). Aplikacja jest rozwijana i może zawierać błędy.
+          </p>
+          <p className="text-[12px] leading-relaxed mt-2" style={{ color: COLORS.textSecondary }}>
+            Masz pomysł lub znalazłaś/eś błąd? Napisz na{" "}
+            <a
+              href="mailto:pani.migrena@gmail.com"
+              className="underline"
+              style={{ color: COLORS.accent }}
+            >
+              pani.migrena@gmail.com
+            </a>
+            .
+          </p>
+        </div>
       </div>
     </div>
   );
@@ -1820,12 +1853,14 @@ function TabBar({ screen, setScreen }) {
 const STORAGE_KEY = "dziennik-migren:entries";
 const STORAGE_KEY_PERIOD = "dziennik-migren:period-days";
 const STORAGE_KEY_NAME = "dziennik-migren:patient-name";
+const STORAGE_KEY_DISCLAIMER = "dziennik-migren:disclaimer-accepted";
 
 function App() {
   const [screen, setScreen] = useState("home"); // 'home' | 'form' | 'stats' | 'calendar'
   const [entries, setEntries] = useState([]);
   const [periodDays, setPeriodDays] = useState([]);
   const [patientName, setPatientName] = useState("");
+  const [disclaimerAccepted, setDisclaimerAccepted] = useState(true);
   const [loaded, setLoaded] = useState(false);
   const [editingEntry, setEditingEntry] = useState(null);
 
@@ -1851,6 +1886,12 @@ function App() {
         setPatientName(nameResult ? nameResult.value : "");
       } catch (e) {
         setPatientName("");
+      }
+      try {
+        const disclaimerResult = await window.storage.get(STORAGE_KEY_DISCLAIMER);
+        setDisclaimerAccepted(disclaimerResult ? disclaimerResult.value === "true" : false);
+      } catch (e) {
+        setDisclaimerAccepted(false);
       } finally {
         setLoaded(true);
       }
@@ -1876,6 +1917,11 @@ function App() {
     if (!loaded) return;
     window.storage.set(STORAGE_KEY_NAME, patientName, false).catch(() => {});
   }, [patientName, loaded]);
+
+  const acceptDisclaimer = () => {
+    setDisclaimerAccepted(true);
+    window.storage.set(STORAGE_KEY_DISCLAIMER, "true", false).catch(() => {});
+  };
 
   const togglePeriodDay = (key) => {
     setPeriodDays((prev) =>
@@ -2056,44 +2102,85 @@ function App() {
         </div>
 
         <div className="relative w-full h-full">
-          {screen === "home" && (
-            <HomeScreen
-              entries={entries}
-              onNewAttack={openNewAttack}
-              onOpenStats={() => setScreen("stats")}
-              onClearAll={handleClearAll}
-              onEditEntry={openEditEntry}
-            />
-          )}
-          {screen === "form" && (
-            <FormScreen
-              onCancel={() => { setEditingEntry(null); setScreen("home"); }}
-              onSave={handleSave}
-              onDelete={handleDeleteEntry}
-              editingEntry={editingEntry}
-            />
-          )}
-          {screen === "calendar" && (
-            <CalendarScreen
-              entries={entries}
-              periodDays={periodDays}
-              onTogglePeriod={togglePeriodDay}
-              onEditEntry={openEditEntry}
-            />
-          )}
-          {screen === "stats" && (
-            <StatsScreen
-              entries={entries}
-              periodDays={periodDays}
-              onExportData={handleExportData}
-              onImportData={handleImportData}
-              onExportReport={handleExportReport}
-              patientName={patientName}
-              onChangeName={setPatientName}
-            />
-          )}
+          {!disclaimerAccepted ? (
+            <div className="flex flex-col h-full px-6 py-10 justify-between animate-fade-in">
+              <div>
+                <div className="flex items-center gap-2 mb-6">
+                  <span
+                    className="text-[10px] tracking-wide rounded-full px-2 py-0.5"
+                    style={{ background: COLORS.surface2, color: COLORS.textSecondary, border: `1px solid ${COLORS.border}` }}
+                  >
+                    BETA
+                  </span>
+                </div>
+                <h1 className="font-serif text-2xl mb-5" style={{ color: COLORS.textPrimary }}>
+                  Zanim zaczniesz
+                </h1>
+                <p className="text-sm leading-relaxed" style={{ color: COLORS.textSecondary }}>
+                  Migrenownik jest narzędziem do prowadzenia własnych notatek dotyczących migreny.
+                  Nie jest wyrobem medycznym, nie stawia diagnoz i nie zastępuje konsultacji z lekarzem.
+                </p>
+                <p className="text-sm leading-relaxed mt-4" style={{ color: COLORS.textSecondary }}>
+                  To wersja testowa (Beta) — aplikacja jest rozwijana i może zawierać błędy.
+                </p>
+                <p className="text-sm leading-relaxed mt-4" style={{ color: COLORS.textSecondary }}>
+                  Masz pomysł lub znalazłaś/eś błąd? Napisz na{" "}
+                  <a href="mailto:pani.migrena@gmail.com" className="underline" style={{ color: COLORS.accent }}>
+                    pani.migrena@gmail.com
+                  </a>
+                  .
+                </p>
+              </div>
+              <button
+                onClick={acceptDisclaimer}
+                className="w-full rounded-2xl py-4 text-sm tracking-wide"
+                style={{ background: COLORS.accent, color: COLORS.bg }}
+              >
+                Rozumiem, przejdź do aplikacji
+              </button>
+            </div>
+          ) : (
+            <>
+              {screen === "home" && (
+                <HomeScreen
+                  entries={entries}
+                  onNewAttack={openNewAttack}
+                  onOpenStats={() => setScreen("stats")}
+                  onClearAll={handleClearAll}
+                  onEditEntry={openEditEntry}
+                />
+              )}
+              {screen === "form" && (
+                <FormScreen
+                  onCancel={() => { setEditingEntry(null); setScreen("home"); }}
+                  onSave={handleSave}
+                  onDelete={handleDeleteEntry}
+                  editingEntry={editingEntry}
+                />
+              )}
+              {screen === "calendar" && (
+                <CalendarScreen
+                  entries={entries}
+                  periodDays={periodDays}
+                  onTogglePeriod={togglePeriodDay}
+                  onEditEntry={openEditEntry}
+                />
+              )}
+              {screen === "stats" && (
+                <StatsScreen
+                  entries={entries}
+                  periodDays={periodDays}
+                  onExportData={handleExportData}
+                  onImportData={handleImportData}
+                  onExportReport={handleExportReport}
+                  patientName={patientName}
+                  onChangeName={setPatientName}
+                />
+              )}
 
-          {screen !== "form" && <TabBar screen={screen} setScreen={setScreen} />}
+              {screen !== "form" && <TabBar screen={screen} setScreen={setScreen} />}
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -2102,6 +2189,16 @@ function App() {
 
 ReactDOM.createRoot(document.getElementById("root")).render(<App />);
 
+</script>
+<script>
+  // Rejestracja Service Workera — włącza działanie offline i instalowalność (PWA).
+  if ("serviceWorker" in navigator) {
+    window.addEventListener("load", function () {
+      navigator.serviceWorker.register("service-worker.js").catch(function (err) {
+        console.warn("Nie udało się zarejestrować Service Workera:", err);
+      });
+    });
+  }
 </script>
 </body>
 </html>
