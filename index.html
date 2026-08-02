@@ -81,6 +81,11 @@ const Utensils = (p) => <IconBase {...p}><line x1="5" y1="2" x2="5" y2="9" /><li
 const BatteryLow = (p) => <IconBase {...p}><rect x="2" y="7" width="18" height="10" rx="2" /><line x1="22" y1="11" x2="22" y2="13" /><rect x="5" y="10" width="3" height="4" fill="currentColor" stroke="none" /></IconBase>;
 const Trash2 = (p) => <IconBase {...p}><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><path d="M10 11v6" /><path d="M14 11v6" /><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" /></IconBase>;
 const Droplet = (p) => <IconBase {...p}><path d="M12 2c4 6 7 9.5 7 13a7 7 0 0 1-14 0c0-3.5 3-7 7-13z" /></IconBase>;
+const Download = (p) => <IconBase {...p}><path d="M12 3v10" /><polyline points="7 9 12 14 17 9" /><path d="M5 21h14" /></IconBase>;
+const Upload = (p) => <IconBase {...p}><path d="M12 21V11" /><polyline points="7 15 12 10 17 15" /><path d="M5 3h14" /></IconBase>;
+const FileText = (p) => <IconBase {...p}><path d="M7 3h7l4 4v14H7z" /><line x1="9" y1="11" x2="15" y2="11" /><line x1="9" y1="15" x2="15" y2="15" /></IconBase>;
+const MapPin = (p) => <IconBase {...p}><path d="M12 22s7-7.5 7-12a7 7 0 1 0-14 0c0 4.5 7 12 7 12z" /><circle cx="12" cy="10" r="2.5" /></IconBase>;
+const Clock = (p) => <IconBase {...p}><circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 16 14" /></IconBase>;
 
 /* ---------------------------------------------------------
    WYKRES BÓLU W CZASIE — prosty SVG, bez zależności
@@ -171,6 +176,41 @@ const TRIGGERS = [
   { id: "alkohol", label: "Alkohol", icon: Wine },
   { id: "dieta", label: "Dieta", icon: Utensils },
   { id: "zmeczenie", label: "Zmęczenie", icon: BatteryLow },
+];
+
+const DURATIONS = [
+  { id: "lt1", label: "< 1 h" },
+  { id: "1-4", label: "1–4 h" },
+  { id: "4-12", label: "4–12 h" },
+  { id: "12-24", label: "12–24 h" },
+  { id: "gt24", label: "> 24 h" },
+];
+
+const MED_EFFECTS = [
+  { id: "pomogl", label: "Pomógł" },
+  { id: "czesciowo", label: "Częściowo" },
+  { id: "nie_pomogl", label: "Nie pomógł" },
+];
+
+const HEAD_LOCATIONS = [
+  { id: "cala", label: "Cała głowa" },
+  { id: "czolo", label: "Czoło" },
+  { id: "lewa_skron", label: "Lewa skroń" },
+  { id: "prawa_skron", label: "Prawa skroń" },
+  { id: "kark", label: "Kark / tył głowy" },
+];
+
+const PRODROME = [
+  { id: "zmeczenie_przed", label: "Nietypowe zmęczenie", icon: BatteryLow },
+  { id: "apetyt", label: "Wzmożony apetyt", icon: Utensils },
+  { id: "sztywnosc", label: "Sztywność karku", icon: Activity },
+  { id: "nastroj", label: "Zmiany nastroju", icon: Zap },
+];
+
+const POSTDROME = [
+  { id: "zmeczenie_po", label: "Wyczerpanie", icon: BatteryLow },
+  { id: "koncentracja", label: "Trudności z koncentracją", icon: Eye },
+  { id: "tkliwosc", label: "Tkliwość skóry głowy", icon: Volume2 },
 ];
 
 const fmtDate = (iso) => {
@@ -284,6 +324,33 @@ function Tile({ active, icon: Icon, label, onClick, accentColor }) {
         {label}
       </span>
     </button>
+  );
+}
+
+/* ---------------------------------------------------------
+   PillRow — pojedynczy wybór z rzędu "piguł" (opcjonalny)
+--------------------------------------------------------- */
+function PillRow({ options, value, onChange, accentColor = COLORS.accent }) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map((o) => {
+        const active = value === o.id;
+        return (
+          <button
+            key={o.id}
+            onClick={() => onChange(active ? null : o.id)}
+            className="rounded-full px-3.5 py-2 text-[12px] border transition-all"
+            style={{
+              background: active ? `${accentColor}22` : COLORS.surface,
+              borderColor: active ? accentColor : COLORS.border,
+              color: active ? COLORS.textPrimary : COLORS.textSecondary,
+            }}
+          >
+            {o.label}
+          </button>
+        );
+      })}
+    </div>
   );
 }
 
@@ -490,6 +557,19 @@ function HomeScreen({ entries, onNewAttack, onOpenStats, onClearAll, onEditEntry
                         .join(" · ")
                     : "Brak zanotowanych objawów"}
                 </p>
+                {(e.location || e.duration) && (
+                  <p
+                    className="text-[11px] mt-0.5 truncate"
+                    style={{ color: COLORS.textMuted }}
+                  >
+                    {[
+                      e.location ? HEAD_LOCATIONS.find((x) => x.id === e.location)?.label : null,
+                      e.duration ? DURATIONS.find((x) => x.id === e.duration)?.label : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </p>
+                )}
                 {e.dietNote && (
                   <p
                     className="text-[11px] mt-0.5 truncate italic"
@@ -533,6 +613,11 @@ function FormScreen({ onCancel, onSave, onDelete, editingEntry }) {
   const [pain, setPain] = useState(editingEntry ? editingEntry.pain : 5);
   const [symptoms, setSymptoms] = useState(editingEntry ? editingEntry.symptoms : []);
   const [triggers, setTriggers] = useState(editingEntry ? editingEntry.triggers : []);
+  const [duration, setDuration] = useState(editingEntry ? editingEntry.duration || null : null);
+  const [medEffect, setMedEffect] = useState(editingEntry ? editingEntry.medEffect || null : null);
+  const [location, setLocation] = useState(editingEntry ? editingEntry.location || null : null);
+  const [prodrome, setProdrome] = useState(editingEntry ? editingEntry.prodrome || [] : []);
+  const [postdrome, setPostdrome] = useState(editingEntry ? editingEntry.postdrome || [] : []);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const medicationRef = useRef(null);
   const dietNoteRef = useRef(null);
@@ -548,6 +633,11 @@ function FormScreen({ onCancel, onSave, onDelete, editingEntry }) {
       pain,
       symptoms,
       triggers,
+      duration,
+      medEffect,
+      location,
+      prodrome,
+      postdrome,
       medication:
         medicationRef.current && medicationRef.current.value.trim()
           ? medicationRef.current.value.trim()
@@ -649,6 +739,52 @@ function FormScreen({ onCancel, onSave, onDelete, editingEntry }) {
           </div>
         </div>
 
+        {/* Lokalizacja bólu */}
+        <div className="mt-8">
+          <p
+            className="text-[11px] uppercase tracking-[0.18em] mb-3 flex items-center gap-1.5"
+            style={{ color: COLORS.textMuted }}
+          >
+            <MapPin size={12} />
+            Lokalizacja bólu (opcjonalnie)
+          </p>
+          <PillRow options={HEAD_LOCATIONS} value={location} onChange={setLocation} />
+        </div>
+
+        {/* Czas trwania */}
+        <div className="mt-6">
+          <p
+            className="text-[11px] uppercase tracking-[0.18em] mb-3 flex items-center gap-1.5"
+            style={{ color: COLORS.textMuted }}
+          >
+            <Clock size={12} />
+            Czas trwania (opcjonalnie)
+          </p>
+          <PillRow options={DURATIONS} value={duration} onChange={setDuration} />
+        </div>
+
+        {/* Objawy zapowiadające (prodrom) */}
+        <div className="mt-8">
+          <p
+            className="text-[11px] uppercase tracking-[0.18em] mb-3"
+            style={{ color: COLORS.textMuted }}
+          >
+            Objawy zapowiadające, przed atakiem (opcjonalnie)
+          </p>
+          <div className="grid grid-cols-2 gap-2.5">
+            {PRODROME.map((s) => (
+              <Tile
+                key={s.id}
+                icon={s.icon}
+                label={s.label}
+                active={prodrome.includes(s.id)}
+                accentColor="#6b8a94"
+                onClick={() => toggle(prodrome, setProdrome, s.id)}
+              />
+            ))}
+          </div>
+        </div>
+
         {/* Objawy */}
         <div className="mt-8">
           <p
@@ -736,6 +872,31 @@ function FormScreen({ onCancel, onSave, onDelete, editingEntry }) {
               className="bg-transparent outline-none text-sm flex-1 placeholder:opacity-60"
               style={{ color: COLORS.textPrimary }}
             />
+          </div>
+          <div className="mt-2.5">
+            <PillRow options={MED_EFFECTS} value={medEffect} onChange={setMedEffect} accentColor="#a68a64" />
+          </div>
+        </div>
+
+        {/* Objawy po ataku (postdrom) */}
+        <div className="mt-6">
+          <p
+            className="text-[11px] uppercase tracking-[0.18em] mb-3"
+            style={{ color: COLORS.textMuted }}
+          >
+            Objawy po ataku, "kac migrenowy" (opcjonalnie)
+          </p>
+          <div className="grid grid-cols-2 gap-2.5">
+            {POSTDROME.map((s) => (
+              <Tile
+                key={s.id}
+                icon={s.icon}
+                label={s.label}
+                active={postdrome.includes(s.id)}
+                accentColor="#6b8a94"
+                onClick={() => toggle(postdrome, setPostdrome, s.id)}
+              />
+            ))}
           </div>
         </div>
 
@@ -1026,9 +1187,29 @@ function CalendarScreen({ entries, periodDays, onTogglePeriod, onEditEntry }) {
                     Edytuj
                   </button>
                 </div>
-                {e.symptoms.length > 0 && (
+                {(e.location || e.duration) && (
                   <p className="text-[12px]" style={{ color: COLORS.textSecondary }}>
+                    {[
+                      e.location ? HEAD_LOCATIONS.find((x) => x.id === e.location)?.label : null,
+                      e.duration ? `czas trwania: ${DURATIONS.find((x) => x.id === e.duration)?.label}` : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </p>
+                )}
+                {e.symptoms.length > 0 && (
+                  <p className="text-[12px] mt-0.5" style={{ color: COLORS.textSecondary }}>
                     Objawy: {e.symptoms.map((s) => SYMPTOMS.find((x) => x.id === s)?.label).join(", ")}
+                  </p>
+                )}
+                {e.prodrome && e.prodrome.length > 0 && (
+                  <p className="text-[12px] mt-0.5" style={{ color: COLORS.textSecondary }}>
+                    Zapowiedzi: {e.prodrome.map((p) => PRODROME.find((x) => x.id === p)?.label).join(", ")}
+                  </p>
+                )}
+                {e.postdrome && e.postdrome.length > 0 && (
+                  <p className="text-[12px] mt-0.5" style={{ color: COLORS.textSecondary }}>
+                    Po ataku: {e.postdrome.map((p) => POSTDROME.find((x) => x.id === p)?.label).join(", ")}
                   </p>
                 )}
                 {e.triggers.length > 0 && (
@@ -1039,6 +1220,7 @@ function CalendarScreen({ entries, periodDays, onTogglePeriod, onEditEntry }) {
                 {e.medication && e.medication !== "—" && (
                   <p className="text-[12px] mt-0.5" style={{ color: COLORS.textSecondary }}>
                     Lek: {e.medication}
+                    {e.medEffect ? ` — ${MED_EFFECTS.find((x) => x.id === e.medEffect)?.label}` : ""}
                   </p>
                 )}
                 {e.dietNote && (
@@ -1109,7 +1291,11 @@ function CalendarScreen({ entries, periodDays, onTogglePeriod, onEditEntry }) {
 /* ---------------------------------------------------------
    EKRAN STATYSTYK
 --------------------------------------------------------- */
-function StatsScreen({ entries }) {
+function StatsScreen({ entries, periodDays, onExportData, onImportData, onExportReport, patientName, onChangeName }) {
+  const fileInputRef = useRef(null);
+  const [showMidas, setShowMidas] = useState(false);
+  const [midasAnswers, setMidasAnswers] = useState(["", "", "", "", ""]);
+  const [weatherState, setWeatherState] = useState({ status: "idle", result: null, error: null });
   const monthlyCounts = useMemo(() => {
     const map = {};
     entries.forEach((e) => {
@@ -1150,6 +1336,93 @@ function StatsScreen({ entries }) {
   const avgPain = entries.length
     ? (entries.reduce((s, e) => s + e.pain, 0) / entries.length).toFixed(1)
     : "0";
+
+  const midasTotal = midasAnswers.reduce((sum, v) => sum + (parseInt(v, 10) || 0), 0);
+  const midasGrade =
+    midasTotal <= 5
+      ? "Stopień I — minimalne ograniczenie"
+      : midasTotal <= 10
+      ? "Stopień II — łagodne ograniczenie"
+      : midasTotal <= 20
+      ? "Stopień III — umiarkowane ograniczenie"
+      : "Stopień IV — poważne ograniczenie";
+  const midasHasAnswers = midasAnswers.some((v) => v !== "");
+
+  const checkWeatherCorrelation = () => {
+    if (entries.length < 5) {
+      setWeatherState({ status: "error", result: null, error: "Potrzeba co najmniej 5 zapisanych ataków, żeby porównanie miało sens." });
+      return;
+    }
+    setWeatherState({ status: "loading", result: null, error: null });
+    if (!navigator.geolocation) {
+      setWeatherState({ status: "error", result: null, error: "Twoja przeglądarka nie obsługuje lokalizacji." });
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const { latitude, longitude } = pos.coords;
+          const sorted = [...entries].sort((a, b) => new Date(a.date) - new Date(b.date));
+          const earliestDate = new Date(sorted[0].date);
+          const ninetyDaysAgo = new Date();
+          ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+          const start = earliestDate > ninetyDaysAgo ? earliestDate : ninetyDaysAgo;
+          const end = new Date();
+          end.setDate(end.getDate() - 1);
+          const fmt = (d) => dateKey(d);
+          const url = `https://archive-api.open-meteo.com/v1/archive?latitude=${latitude}&longitude=${longitude}&start_date=${fmt(start)}&end_date=${fmt(end)}&hourly=surface_pressure&timezone=auto`;
+          const res = await fetch(url);
+          const data = await res.json();
+          if (!data.hourly || !data.hourly.time) throw new Error("Brak danych pogodowych");
+
+          const dailyPressures = {};
+          data.hourly.time.forEach((t, i) => {
+            const day = t.slice(0, 10);
+            if (!dailyPressures[day]) dailyPressures[day] = [];
+            dailyPressures[day].push(data.hourly.surface_pressure[i]);
+          });
+          const dailyAvg = {};
+          Object.entries(dailyPressures).forEach(([day, vals]) => {
+            dailyAvg[day] = vals.reduce((s, v) => s + v, 0) / vals.length;
+          });
+
+          const attackDays = new Set(entries.map((e) => dateKey(new Date(e.date))));
+          const attackPressures = [];
+          const otherPressures = [];
+          Object.entries(dailyAvg).forEach(([day, p]) => {
+            if (attackDays.has(day)) attackPressures.push(p);
+            else otherPressures.push(p);
+          });
+
+          if (attackPressures.length < 3 || otherPressures.length < 3) {
+            setWeatherState({ status: "error", result: null, error: "Za mało danych pogodowych w tym okresie, żeby porównać." });
+            return;
+          }
+
+          const avg = (arr) => arr.reduce((s, v) => s + v, 0) / arr.length;
+          const attackAvg = avg(attackPressures);
+          const otherAvg = avg(otherPressures);
+          const diff = attackAvg - otherAvg;
+
+          setWeatherState({
+            status: "done",
+            error: null,
+            result: {
+              attackAvg: attackAvg.toFixed(1),
+              otherAvg: otherAvg.toFixed(1),
+              diff: diff.toFixed(1),
+              days: Object.keys(dailyAvg).length,
+            },
+          });
+        } catch (err) {
+          setWeatherState({ status: "error", result: null, error: "Nie udało się pobrać danych pogodowych. Spróbuj ponownie później." });
+        }
+      },
+      () => {
+        setWeatherState({ status: "error", result: null, error: "Musisz zezwolić na dostęp do lokalizacji, żeby sprawdzić dane pogodowe." });
+      }
+    );
+  };
 
   return (
     <div className="flex flex-col h-full animate-fade-in">
@@ -1321,6 +1594,181 @@ function StatsScreen({ entries }) {
             </p>
           </div>
         </div>
+
+        {/* Kopia zapasowa i raport */}
+        <div
+          className="rounded-2xl p-4 border mt-5"
+          style={{ background: COLORS.surface, borderColor: COLORS.border }}
+        >
+          <p className="text-sm mb-1" style={{ color: COLORS.textPrimary }}>
+            Kopia zapasowa i raport
+          </p>
+          <p className="text-[11px] mb-3" style={{ color: COLORS.textSecondary }}>
+            Dane są zapisane tylko na tym urządzeniu — eksportuj plik, żeby ich nie stracić.
+          </p>
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={onExportData}
+              className="flex items-center justify-center gap-2 rounded-xl py-3 text-sm"
+              style={{ background: COLORS.surface2, color: COLORS.textPrimary }}
+            >
+              <Download size={15} style={{ color: COLORS.textSecondary }} />
+              Eksportuj dane (kopia zapasowa)
+            </button>
+            <button
+              onClick={() => fileInputRef.current && fileInputRef.current.click()}
+              className="flex items-center justify-center gap-2 rounded-xl py-3 text-sm"
+              style={{ background: COLORS.surface2, color: COLORS.textPrimary }}
+            >
+              <Upload size={15} style={{ color: COLORS.textSecondary }} />
+              Importuj dane z pliku
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="application/json"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files && e.target.files[0];
+                if (file) onImportData(file);
+                e.target.value = "";
+              }}
+            />
+            <div>
+              <p className="text-[11px] mb-1.5" style={{ color: COLORS.textSecondary }}>
+                Imię i nazwisko (opcjonalnie, pojawi się w raporcie)
+              </p>
+              <input
+                defaultValue={patientName}
+                onBlur={(e) => onChangeName(e.target.value)}
+                placeholder="np. Anna Kowalska"
+                className="w-full rounded-xl px-3 py-2.5 text-sm border bg-transparent outline-none placeholder:opacity-60"
+                style={{ borderColor: COLORS.border, color: COLORS.textPrimary }}
+              />
+            </div>
+            <button
+              onClick={onExportReport}
+              className="flex items-center justify-center gap-2 rounded-xl py-3 text-sm"
+              style={{ background: COLORS.accentSoft, color: COLORS.textPrimary }}
+            >
+              <FileText size={15} style={{ color: COLORS.accent }} />
+              Eksportuj podsumowanie dla lekarza
+            </button>
+          </div>
+        </div>
+
+        {/* Test MIDAS */}
+        <div
+          className="rounded-2xl p-4 border mt-5"
+          style={{ background: COLORS.surface, borderColor: COLORS.border }}
+        >
+          <button
+            onClick={() => setShowMidas((v) => !v)}
+            className="w-full flex items-center justify-between text-left"
+          >
+            <div>
+              <p className="text-sm" style={{ color: COLORS.textPrimary }}>Test MIDAS</p>
+              <p className="text-[11px] mt-0.5" style={{ color: COLORS.textSecondary }}>
+                Kwestionariusz wpływu migreny na codzienne funkcjonowanie
+              </p>
+            </div>
+            <ChevronLeft
+              size={16}
+              style={{ color: COLORS.textMuted, transform: showMidas ? "rotate(90deg)" : "rotate(-90deg)" }}
+            />
+          </button>
+
+          {showMidas && (
+            <div className="mt-4 flex flex-col gap-3 animate-fade-in">
+              {[
+                "Ile dni w ciągu ostatnich 3 miesięcy opuściłaś/eś pracę, szkołę lub studia z powodu bólu głowy?",
+                "Ile dni Twoja wydajność w pracy/szkole była zmniejszona o połowę lub więcej (nie licząc dni z pytania 1)?",
+                "Ile dni nie wykonywałaś/eś prac domowych z powodu bólu głowy?",
+                "Ile dni Twoja wydajność w pracach domowych była zmniejszona o połowę lub więcej (nie licząc dni z pytania 3)?",
+                "Ile dni opuściłaś/eś wydarzenia rodzinne, towarzyskie lub rekreacyjne z powodu bólu głowy?",
+              ].map((q, i) => (
+                <div key={i}>
+                  <p className="text-[12px] mb-1.5" style={{ color: COLORS.textSecondary }}>{q}</p>
+                  <input
+                    type="number"
+                    min="0"
+                    max="90"
+                    value={midasAnswers[i]}
+                    onChange={(e) => {
+                      const next = [...midasAnswers];
+                      next[i] = e.target.value.replace(/[^0-9]/g, "");
+                      setMidasAnswers(next);
+                    }}
+                    placeholder="0"
+                    className="w-20 rounded-lg px-3 py-2 text-sm border bg-transparent outline-none"
+                    style={{ borderColor: COLORS.border, color: COLORS.textPrimary }}
+                  />
+                </div>
+              ))}
+              {midasHasAnswers && (
+                <div
+                  className="rounded-xl p-3 mt-1"
+                  style={{ background: COLORS.surface2 }}
+                >
+                  <p className="text-[13px]" style={{ color: COLORS.textPrimary }}>
+                    Wynik: {midasTotal} dni
+                  </p>
+                  <p className="text-[12px] mt-0.5" style={{ color: COLORS.accent }}>
+                    {midasGrade}
+                  </p>
+                </div>
+              )}
+              <p className="text-[10px] mt-1" style={{ color: COLORS.textMuted }}>
+                To narzędzie pomocnicze do rozmowy z lekarzem, nie zastępuje diagnozy.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Pogoda i ciśnienie */}
+        <div
+          className="rounded-2xl p-4 border mt-5"
+          style={{ background: COLORS.surface, borderColor: COLORS.border }}
+        >
+          <p className="text-sm mb-1" style={{ color: COLORS.textPrimary }}>Pogoda i ciśnienie</p>
+          <p className="text-[11px] mb-3" style={{ color: COLORS.textSecondary }}>
+            Porównuje ciśnienie atmosferyczne w dni ataków z resztą ostatnich 90 dni. Wymaga zgody na lokalizację.
+          </p>
+          {weatherState.status !== "done" && (
+            <button
+              onClick={checkWeatherCorrelation}
+              disabled={weatherState.status === "loading"}
+              className="w-full rounded-xl py-3 text-sm"
+              style={{ background: COLORS.surface2, color: COLORS.textPrimary }}
+            >
+              {weatherState.status === "loading" ? "Sprawdzam…" : "Sprawdź korelację z ciśnieniem"}
+            </button>
+          )}
+          {weatherState.status === "error" && (
+            <p className="text-[12px] mt-2" style={{ color: "#b3684f" }}>{weatherState.error}</p>
+          )}
+          {weatherState.status === "done" && weatherState.result && (
+            <div className="rounded-xl p-3" style={{ background: COLORS.surface2 }}>
+              <p className="text-[13px]" style={{ color: COLORS.textPrimary }}>
+                Średnie ciśnienie w dni ataków: {weatherState.result.attackAvg} hPa
+              </p>
+              <p className="text-[13px] mt-1" style={{ color: COLORS.textPrimary }}>
+                Średnie ciśnienie w pozostałe dni: {weatherState.result.otherAvg} hPa
+              </p>
+              <p className="text-[12px] mt-2" style={{ color: COLORS.accent }}>
+                Różnica: {weatherState.result.diff > 0 ? "+" : ""}{weatherState.result.diff} hPa
+                {Math.abs(weatherState.result.diff) < 1
+                  ? " — brak wyraźnej różnicy"
+                  : weatherState.result.diff < 0
+                  ? " — dni ataków miały niższe ciśnienie"
+                  : " — dni ataków miały wyższe ciśnienie"}
+              </p>
+              <p className="text-[10px] mt-2" style={{ color: COLORS.textMuted }}>
+                To prosta obserwacja statystyczna z {weatherState.result.days} dni, nie dowód przyczynowości.
+              </p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -1371,11 +1819,13 @@ function TabBar({ screen, setScreen }) {
 --------------------------------------------------------- */
 const STORAGE_KEY = "dziennik-migren:entries";
 const STORAGE_KEY_PERIOD = "dziennik-migren:period-days";
+const STORAGE_KEY_NAME = "dziennik-migren:patient-name";
 
 function App() {
   const [screen, setScreen] = useState("home"); // 'home' | 'form' | 'stats' | 'calendar'
   const [entries, setEntries] = useState([]);
   const [periodDays, setPeriodDays] = useState([]);
+  const [patientName, setPatientName] = useState("");
   const [loaded, setLoaded] = useState(false);
   const [editingEntry, setEditingEntry] = useState(null);
 
@@ -1395,6 +1845,12 @@ function App() {
         setPeriodDays(parsedPeriod || []);
       } catch (e) {
         setPeriodDays([]);
+      }
+      try {
+        const nameResult = await window.storage.get(STORAGE_KEY_NAME);
+        setPatientName(nameResult ? nameResult.value : "");
+      } catch (e) {
+        setPatientName("");
       } finally {
         setLoaded(true);
       }
@@ -1415,6 +1871,11 @@ function App() {
       .set(STORAGE_KEY_PERIOD, JSON.stringify(periodDays), false)
       .catch(() => {});
   }, [periodDays, loaded]);
+
+  useEffect(() => {
+    if (!loaded) return;
+    window.storage.set(STORAGE_KEY_NAME, patientName, false).catch(() => {});
+  }, [patientName, loaded]);
 
   const togglePeriodDay = (key) => {
     setPeriodDays((prev) =>
@@ -1451,6 +1912,92 @@ function App() {
     setEntries((prev) => prev.filter((e) => e.id !== id));
     setEditingEntry(null);
     setScreen("home");
+  };
+
+  const triggerDownload = (filename, content, mimeType) => {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportData = () => {
+    const payload = JSON.stringify({ entries, periodDays }, null, 2);
+    const today = dateKey(new Date());
+    triggerDownload(`dziennik-migren-kopia-${today}.json`, payload, "application/json");
+  };
+
+  const handleImportData = (file) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(reader.result);
+        if (Array.isArray(data.entries)) setEntries(data.entries);
+        if (Array.isArray(data.periodDays)) setPeriodDays(data.periodDays);
+      } catch (e) {
+        alert("Nie udało się odczytać pliku. Sprawdź, czy to poprawna kopia zapasowa.");
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleExportReport = () => {
+    const sorted = [...entries].sort((a, b) => new Date(a.date) - new Date(b.date));
+    const avgPain = entries.length
+      ? (entries.reduce((s, e) => s + e.pain, 0) / entries.length).toFixed(1)
+      : "brak danych";
+    const triggerCounts = {};
+    const symptomCounts = {};
+    const medsSet = new Set();
+    entries.forEach((e) => {
+      e.triggers.forEach((t) => (triggerCounts[t] = (triggerCounts[t] || 0) + 1));
+      e.symptoms.forEach((s) => (symptomCounts[s] = (symptomCounts[s] || 0) + 1));
+      if (e.medication && e.medication !== "—") medsSet.add(e.medication);
+    });
+    const topList = (counts, dict) =>
+      Object.entries(counts)
+        .sort((a, b) => b[1] - a[1])
+        .map(([id, c]) => `${dict.find((x) => x.id === id)?.label || id} (${c}x)`)
+        .join(", ") || "brak";
+
+    const lines = [
+      "PODSUMOWANIE DZIENNICZKA MIGREN",
+      patientName ? `Pacjent/ka: ${patientName}` : null,
+      `Wygenerowano: ${new Date().toLocaleDateString("pl-PL")}`,
+      "",
+      `Liczba zapisanych ataków: ${entries.length}`,
+      sorted.length ? `Okres: ${fmtDate(sorted[0].date)} – ${fmtDate(sorted[sorted.length - 1].date)}` : null,
+      `Średnia intensywność bólu: ${avgPain} / 10`,
+      `Najsilniejszy zanotowany ból: ${entries.length ? Math.max(...entries.map((e) => e.pain)) : "—"} / 10`,
+      "",
+      `Najczęstsze wyzwalacze: ${topList(triggerCounts, TRIGGERS)}`,
+      `Najczęstsze objawy: ${topList(symptomCounts, SYMPTOMS)}`,
+      `Stosowane leki: ${medsSet.size ? [...medsSet].join(", ") : "brak"}`,
+      `Dni miesiączki w historii: ${periodDays.length}`,
+      "",
+      "SZCZEGÓŁOWA HISTORIA ATAKÓW:",
+      ...sorted.map((e) => {
+        const parts = [
+          fmtDate(e.date),
+          `ból ${e.pain}/10 (${painLabel(e.pain)})`,
+          e.symptoms.length ? `objawy: ${e.symptoms.map((s) => SYMPTOMS.find((x) => x.id === s)?.label).join(", ")}` : null,
+          e.triggers.length ? `wyzwalacze: ${e.triggers.map((t) => TRIGGERS.find((x) => x.id === t)?.label).join(", ")}` : null,
+          e.medication && e.medication !== "—" ? `lek: ${e.medication}` : null,
+          e.note ? `notatka: ${e.note}` : null,
+        ].filter(Boolean);
+        return "- " + parts.join(" · ");
+      }),
+    ]
+      .filter((l) => l !== null)
+      .join("\n");
+
+    const today = dateKey(new Date());
+    triggerDownload(`podsumowanie-migreny-${today}.txt`, lines, "text/plain;charset=utf-8");
   };
 
   if (!loaded) {
@@ -1534,7 +2081,17 @@ function App() {
               onEditEntry={openEditEntry}
             />
           )}
-          {screen === "stats" && <StatsScreen entries={entries} />}
+          {screen === "stats" && (
+            <StatsScreen
+              entries={entries}
+              periodDays={periodDays}
+              onExportData={handleExportData}
+              onImportData={handleImportData}
+              onExportReport={handleExportReport}
+              patientName={patientName}
+              onChangeName={setPatientName}
+            />
+          )}
 
           {screen !== "form" && <TabBar screen={screen} setScreen={setScreen} />}
         </div>
