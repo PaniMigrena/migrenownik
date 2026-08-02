@@ -1,6 +1,6 @@
 {
   "name": "Dzienniczek Migren",
-  "short_name": "Migrena",
+  "short_name": "Migrenownik",
   "description": "Prywatny dziennik ataków migreny — dane zapisywane wyłącznie lokalnie, na Twoim urządzeniu.",
   "start_url": "./index.html",
   "scope": "./",

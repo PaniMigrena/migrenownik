@@ -1,122 +1,33 @@
-<!DOCTYPE html>
-<html lang="pl">
-<head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover" />
-<title>Dzienniczek Migren</title>
-<meta name="description" content="Prywatny dziennik ataków migreny — dane zapisywane wyłącznie na Twoim urządzeniu." />
-
-<link rel="manifest" href="manifest.json" />
-<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png" />
-<link rel="apple-touch-icon" href="apple-touch-icon.png" />
-<meta name="theme-color" content="#17171b" />
-<meta name="apple-mobile-web-app-capable" content="yes" />
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-<meta name="apple-mobile-web-app-title" content="Migrenownik" />
-
-<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
-<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
-<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-<script src="https://cdn.tailwindcss.com"></script>
-
-<style>
-  html, body { background: #0c0c0e; margin: 0; }
-  #root { min-height: 100vh; }
-</style>
-
-<script>
-  // Trwały zapis danych — WYŁĄCZNIE lokalnie w tej przeglądarce/na tym urządzeniu.
-  // Każda osoba, która otworzy tę stronę na swoim telefonie, ma własne, niezależne dane.
-  window.storage = {
-    get: function (key) {
-      return Promise.resolve().then(function () {
-        var v = localStorage.getItem(key);
-        return v === null ? null : { key: key, value: v };
-      });
-    },
-    set: function (key, value) {
-      return Promise.resolve().then(function () {
-        localStorage.setItem(key, value);
-        return { key: key, value: value };
-      });
-    },
-  };
-</script>
-</head>
-<body>
-<div id="root"></div>
-<script type="text/babel" data-presets="react">
-
-const { useState, useMemo, useEffect, useRef } = React;
-
-/* ---------------------------------------------------------
-   IKONY — proste, spójne ikony liniowe (bez zależności od
-   zewnętrznych bibliotek), zgodne stylistycznie z lucide.
---------------------------------------------------------- */
-function IconBase({ size = 18, color, style, className, strokeWidth = 1.6, fill = "none", children }) {
-  const mergedStyle = { color: color || (style && style.color), ...style };
-  return (
-    <svg width={size} height={size} viewBox="0 0 24 24" fill={fill} stroke="currentColor"
-      strokeWidth={strokeWidth} strokeLinecap="round" strokeLinejoin="round"
-      className={className} style={mergedStyle}>
-      {children}
-    </svg>
-  );
-}
-const Plus = (p) => <IconBase {...p}><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></IconBase>;
-const ChevronLeft = (p) => <IconBase {...p}><polyline points="15 18 9 12 15 6" /></IconBase>;
-const Home = (p) => <IconBase {...p}><path d="M3 11l9-8 9 8" /><path d="M5 10v10h14V10" /></IconBase>;
-const BarChart3 = (p) => <IconBase {...p}><line x1="4" y1="20" x2="4" y2="10" /><line x1="12" y1="20" x2="12" y2="4" /><line x1="20" y1="20" x2="20" y2="14" /></IconBase>;
-const Moon = (p) => <IconBase {...p}><path d="M20 12.5A8 8 0 1 1 11.5 4a6.5 6.5 0 0 0 8.5 8.5z" /></IconBase>;
-const CloudRain = (p) => <IconBase {...p}><path d="M6 15a4 4 0 1 1 1-7.9A5 5 0 0 1 17 9a3.5 3.5 0 0 1-.5 7H6z" /><line x1="8" y1="19" x2="8" y2="21" /><line x1="12" y1="19" x2="12" y2="21" /><line x1="16" y1="19" x2="16" y2="21" /></IconBase>;
-const Wine = (p) => <IconBase {...p}><path d="M8 3h8l-1 7a3 3 0 0 1-6 0L8 3z" /><line x1="12" y1="13" x2="12" y2="19" /><line x1="9" y1="19" x2="15" y2="19" /></IconBase>;
-const Zap = (p) => <IconBase {...p}><path d="M13 2 4 14h7l-1 8 9-12h-7l1-8z" /></IconBase>;
-const Eye = (p) => <IconBase {...p}><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7z" /><circle cx="12" cy="12" r="3" /></IconBase>;
-const Volume2 = (p) => <IconBase {...p}><path d="M4 9v6h4l5 5V4L8 9H4z" /><path d="M16 8a5 5 0 0 1 0 8" /></IconBase>;
-const Pill = (p) => <IconBase {...p}><path d="M6 14 14 6a4 4 0 1 1 6 6l-8 8a4 4 0 1 1-6-6z" /><line x1="10" y1="10" x2="14" y2="14" /></IconBase>;
-const Check = (p) => <IconBase {...p}><polyline points="4 12 9 17 20 6" /></IconBase>;
-const Calendar = (p) => <IconBase {...p}><rect x="3" y="5" width="18" height="16" rx="2" /><line x1="3" y1="10" x2="21" y2="10" /><line x1="8" y1="3" x2="8" y2="7" /><line x1="16" y1="3" x2="16" y2="7" /></IconBase>;
-const Activity = (p) => <IconBase {...p}><polyline points="2 12 7 12 10 4 14 20 17 12 22 12" /></IconBase>;
-const Utensils = (p) => <IconBase {...p}><line x1="5" y1="2" x2="5" y2="9" /><line x1="8" y1="2" x2="8" y2="9" /><line x1="11" y1="2" x2="11" y2="9" /><path d="M5 9c0 2 3 3 3 3v10" /><path d="M15 2c-2 0-3 2-3 5s1 5 3 5v10" /></IconBase>;
-const BatteryLow = (p) => <IconBase {...p}><rect x="2" y="7" width="18" height="10" rx="2" /><line x1="22" y1="11" x2="22" y2="13" /><rect x="5" y="10" width="3" height="4" fill="currentColor" stroke="none" /></IconBase>;
-const Trash2 = (p) => <IconBase {...p}><polyline points="3 6 5 6 21 6" /><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" /><path d="M10 11v6" /><path d="M14 11v6" /><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" /></IconBase>;
-const Droplet = (p) => <IconBase {...p}><path d="M12 2c4 6 7 9.5 7 13a7 7 0 0 1-14 0c0-3.5 3-7 7-13z" /></IconBase>;
-
-/* ---------------------------------------------------------
-   WYKRES BÓLU W CZASIE — prosty SVG, bez zależności
---------------------------------------------------------- */
-function PainTrendChart({ data }) {
-  if (!data.length) {
-    return <p className="text-[12px]" style={{ color: "#8f8d97" }}>Brak danych do pokazania.</p>;
-  }
-  const w = 320, h = 150, padL = 10, padR = 10, padT = 10, padB = 20;
-  const innerW = w - padL - padR;
-  const innerH = h - padT - padB;
-  const stepX = data.length > 1 ? innerW / (data.length - 1) : 0;
-  const points = data.map((d, i) => ({
-    x: padL + i * stepX,
-    y: padT + innerH - (d["Ból"] / 10) * innerH,
-    ...d,
-  }));
-  const pathD = points.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
-  const labelEvery = data.length > 6 ? Math.ceil(data.length / 6) : 1;
-  return (
-    <svg viewBox={`0 0 ${w} ${h}`} width="100%" height={h}>
-      {[0, 5, 10].map((gy) => {
-        const y = padT + innerH - (gy / 10) * innerH;
-        return <line key={gy} x1={padL} y1={y} x2={w - padR} y2={y} stroke="#34333a" strokeWidth="1" strokeDasharray="3 3" />;
-      })}
-      <path d={pathD} fill="none" stroke="#9b8fb0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      {points.map((p, i) => <circle key={i} cx={p.x} cy={p.y} r="2.5" fill="#9b8fb0" />)}
-      {points.map((p, i) =>
-        i % labelEvery === 0 ? (
-          <text key={"t" + i} x={p.x} y={h - 4} fontSize="8" fill="#605f68" textAnchor="middle">{p.date}</text>
-        ) : null
-      )}
-    </svg>
-  );
-}
-
+import React, { useState, useMemo } from "react";
+import {
+  Plus,
+  ChevronLeft,
+  Home,
+  BarChart3,
+  Moon,
+  CloudRain,
+  Wine,
+  Zap,
+  Eye,
+  Volume2,
+  Pill,
+  Check,
+  Calendar,
+  Activity,
+  Utensils,
+  BatteryLow,
+  Trash2,
+  Droplet,
+} from "lucide-react";
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+} from "recharts";
 
 /* ---------------------------------------------------------
    TOKENS — stonowana, ciemna paleta „aury”: bez czerwieni,
@@ -534,9 +445,9 @@ function FormScreen({ onCancel, onSave, onDelete, editingEntry }) {
   const [symptoms, setSymptoms] = useState(editingEntry ? editingEntry.symptoms : []);
   const [triggers, setTriggers] = useState(editingEntry ? editingEntry.triggers : []);
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const medicationRef = useRef(null);
-  const dietNoteRef = useRef(null);
-  const noteRef = useRef(null);
+  const medicationRef = React.useRef(null);
+  const dietNoteRef = React.useRef(null);
+  const noteRef = React.useRef(null);
 
   const toggle = (arr, setArr, id) =>
     setArr(arr.includes(id) ? arr.filter((x) => x !== id) : [...arr, id]);
@@ -1233,8 +1144,43 @@ function StatsScreen({ entries }) {
               śr. {avgPain}
             </span>
           </div>
-          <div style={{ width: "100%" }}>
-            <PainTrendChart data={chartData} />
+          <div style={{ width: "100%", height: 160 }}>
+            <ResponsiveContainer>
+              <LineChart data={chartData} margin={{ left: -20, right: 8, top: 8 }}>
+                <CartesianGrid stroke={COLORS.border} strokeDasharray="3 3" vertical={false} />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fill: COLORS.textMuted, fontSize: 10 }}
+                  axisLine={{ stroke: COLORS.border }}
+                  tickLine={false}
+                />
+                <YAxis
+                  domain={[0, 10]}
+                  tick={{ fill: COLORS.textMuted, fontSize: 10 }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={24}
+                />
+                <Tooltip
+                  contentStyle={{
+                    background: COLORS.surface2,
+                    border: `1px solid ${COLORS.border}`,
+                    borderRadius: 10,
+                    fontSize: 12,
+                    color: COLORS.textPrimary,
+                  }}
+                  labelStyle={{ color: COLORS.textSecondary }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="Ból"
+                  stroke={COLORS.accent}
+                  strokeWidth={2}
+                  dot={{ r: 3, fill: COLORS.accent, strokeWidth: 0 }}
+                  activeDot={{ r: 5 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
           </div>
         </div>
 
@@ -1372,7 +1318,7 @@ function TabBar({ screen, setScreen }) {
 const STORAGE_KEY = "dziennik-migren:entries";
 const STORAGE_KEY_PERIOD = "dziennik-migren:period-days";
 
-function App() {
+export default function App() {
   const [screen, setScreen] = useState("home"); // 'home' | 'form' | 'stats' | 'calendar'
   const [entries, setEntries] = useState([]);
   const [periodDays, setPeriodDays] = useState([]);
@@ -1380,7 +1326,7 @@ function App() {
   const [editingEntry, setEditingEntry] = useState(null);
 
   // Wczytaj zapisane wpisy i dni miesiączki przy starcie
-  useEffect(() => {
+  React.useEffect(() => {
     (async () => {
       try {
         const result = await window.storage.get(STORAGE_KEY);
@@ -1402,14 +1348,14 @@ function App() {
   }, []);
 
   // Zapisuj do trwałej pamięci przy każdej zmianie (po wczytaniu startowym)
-  useEffect(() => {
+  React.useEffect(() => {
     if (!loaded) return;
     window.storage
       .set(STORAGE_KEY, JSON.stringify(entries), false)
       .catch(() => {});
   }, [entries, loaded]);
 
-  useEffect(() => {
+  React.useEffect(() => {
     if (!loaded) return;
     window.storage
       .set(STORAGE_KEY_PERIOD, JSON.stringify(periodDays), false)
@@ -1542,9 +1488,3 @@ function App() {
     </div>
   );
 }
-
-ReactDOM.createRoot(document.getElementById("root")).render(<App />);
-
-</script>
-</body>
-</html>
