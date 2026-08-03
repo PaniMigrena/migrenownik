@@ -388,7 +388,7 @@ function HomeScreen({ entries, onNewAttack, onOpenStats, onClearAll, onEditEntry
     });
   }, [entries]);
 
-  const monthCount = thisMonth.length;
+  const monthCount = thisMonth.filter((e) => !e.continuesPrevious).length;
   const avgPain = entries.length
     ? (entries.reduce((s, e) => s + e.pain, 0) / entries.length).toFixed(1)
     : "—";
@@ -560,10 +560,18 @@ function HomeScreen({ entries, onNewAttack, onOpenStats, onClearAll, onEditEntry
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
                   <span
-                    className="text-sm"
+                    className="text-sm flex items-center gap-1.5"
                     style={{ color: COLORS.textPrimary }}
                   >
                     {fmtDate(e.date)}
+                    {e.continuesPrevious && (
+                      <span
+                        className="text-[9px] uppercase tracking-wide rounded-full px-1.5 py-0.5"
+                        style={{ background: COLORS.surface2, color: COLORS.textMuted, border: `1px solid ${COLORS.border}` }}
+                      >
+                        kontynuacja
+                      </span>
+                    )}
                   </span>
                   <span
                     className="text-[11px]"
@@ -651,6 +659,9 @@ function FormScreen({ onCancel, onSave, onDelete, editingEntry }) {
   );
   const [prodrome, setProdrome] = useState(editingEntry ? editingEntry.prodrome || [] : []);
   const [postdrome, setPostdrome] = useState(editingEntry ? editingEntry.postdrome || [] : []);
+  const [continuesPrevious, setContinuesPrevious] = useState(
+    editingEntry ? !!editingEntry.continuesPrevious : false
+  );
   const [confirmDelete, setConfirmDelete] = useState(false);
   const medicationRef = useRef(null);
   const dietNoteRef = useRef(null);
@@ -671,6 +682,7 @@ function FormScreen({ onCancel, onSave, onDelete, editingEntry }) {
       location,
       prodrome,
       postdrome,
+      continuesPrevious,
       medication:
         medicationRef.current && medicationRef.current.value.trim()
           ? medicationRef.current.value.trim()
@@ -744,6 +756,32 @@ function FormScreen({ onCancel, onSave, onDelete, editingEntry }) {
       )}
 
       <div className="flex-1 overflow-y-auto px-5 pt-5 pb-28">
+        {/* Kontynuacja poprzedniego ataku */}
+        <button
+          onClick={() => setContinuesPrevious((v) => !v)}
+          className="w-full flex items-center gap-3 rounded-2xl p-3.5 border mb-6 text-left transition-all"
+          style={{
+            background: continuesPrevious ? `${COLORS.accent}1f` : COLORS.surface,
+            borderColor: continuesPrevious ? COLORS.accent : COLORS.border,
+          }}
+        >
+          <div
+            className="w-9 h-5 rounded-full flex-shrink-0 relative transition-all"
+            style={{ background: continuesPrevious ? COLORS.accent : COLORS.surface2 }}
+          >
+            <span
+              className="absolute top-0.5 w-4 h-4 rounded-full transition-all"
+              style={{
+                background: COLORS.bg,
+                left: continuesPrevious ? "18px" : "2px",
+              }}
+            />
+          </div>
+          <span className="text-[13px]" style={{ color: COLORS.textPrimary }}>
+            To kontynuacja poprzedniego ataku
+          </span>
+        </button>
+
         {/* Intensywność bólu */}
         <AuraRing value={pain} />
         <p
@@ -1207,10 +1245,18 @@ function CalendarScreen({ entries, periodDays, onTogglePeriod, onEditEntry }) {
               >
                 <div className="flex items-center justify-between mb-1.5">
                   <span
-                    className="text-sm font-serif"
+                    className="text-sm font-serif flex items-center gap-1.5"
                     style={{ color: painColor(e.pain) }}
                   >
                     Ból {e.pain}/10 · {painLabel(e.pain)}
+                    {e.continuesPrevious && (
+                      <span
+                        className="text-[9px] uppercase tracking-wide rounded-full px-1.5 py-0.5"
+                        style={{ background: COLORS.surface2, color: COLORS.textMuted, border: `1px solid ${COLORS.border}` }}
+                      >
+                        kontynuacja
+                      </span>
+                    )}
                   </span>
                   <button
                     onClick={() => onEditEntry(e)}
@@ -1332,6 +1378,7 @@ function StatsScreen({ entries, periodDays, onExportData, onImportData, onExport
   const monthlyCounts = useMemo(() => {
     const map = {};
     entries.forEach((e) => {
+      if (e.continuesPrevious) return;
       const d = new Date(e.date);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       map[key] = (map[key] || 0) + 1;
@@ -1603,10 +1650,10 @@ function StatsScreen({ entries, periodDays, onExportData, onImportData, onExport
               className="font-serif text-2xl mt-2"
               style={{ color: COLORS.textPrimary }}
             >
-              {entries.length}
+              {entries.filter((e) => !e.continuesPrevious).length}
             </p>
             <p className="text-[11px]" style={{ color: COLORS.textSecondary }}>
-              zapisanych ataków
+              odrębnych ataków
             </p>
           </div>
           <div
@@ -2021,6 +2068,7 @@ function App() {
 
   const handleExportReport = () => {
     const sorted = [...entries].sort((a, b) => new Date(a.date) - new Date(b.date));
+    const uniqueAttackCount = entries.filter((e) => !e.continuesPrevious).length;
     const avgPain = entries.length
       ? (entries.reduce((s, e) => s + e.pain, 0) / entries.length).toFixed(1)
       : "brak danych";
@@ -2043,7 +2091,8 @@ function App() {
       patientName ? `Pacjent/ka: ${patientName}` : null,
       `Wygenerowano: ${new Date().toLocaleDateString("pl-PL")}`,
       "",
-      `Liczba zapisanych ataków: ${entries.length}`,
+      `Liczba odrębnych ataków: ${uniqueAttackCount}`,
+      `Liczba zapisanych dni z objawami: ${entries.length}`,
       sorted.length ? `Okres: ${fmtDate(sorted[0].date)} – ${fmtDate(sorted[sorted.length - 1].date)}` : null,
       `Średnia intensywność bólu: ${avgPain} / 10`,
       `Najsilniejszy zanotowany ból: ${entries.length ? Math.max(...entries.map((e) => e.pain)) : "—"} / 10`,
@@ -2057,6 +2106,7 @@ function App() {
       ...sorted.map((e) => {
         const parts = [
           fmtDate(e.date),
+          e.continuesPrevious ? "kontynuacja poprzedniego ataku" : null,
           `ból ${e.pain}/10 (${painLabel(e.pain)})`,
           e.symptoms.length ? `objawy: ${e.symptoms.map((s) => SYMPTOMS.find((x) => x.id === s)?.label).join(", ")}` : null,
           e.triggers.length ? `wyzwalacze: ${e.triggers.map((t) => TRIGGERS.find((x) => x.id === t)?.label).join(", ")}` : null,
