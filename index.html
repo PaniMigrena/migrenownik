@@ -207,6 +207,11 @@ const HEAD_LOCATIONS = [
   { id: "kark", label: "Kark / tył głowy" },
 ];
 
+const locationLabels = (loc) => {
+  const arr = Array.isArray(loc) ? loc : loc ? [loc] : [];
+  return arr.map((id) => HEAD_LOCATIONS.find((x) => x.id === id)?.label).filter(Boolean).join(", ");
+};
+
 const PRODROME = [
   { id: "zmeczenie_przed", label: "Nietypowe zmęczenie", icon: BatteryLow },
   { id: "apetyt", label: "Wzmożony apetyt", icon: Utensils },
@@ -337,15 +342,22 @@ function Tile({ active, icon: Icon, label, onClick, accentColor }) {
 /* ---------------------------------------------------------
    PillRow — pojedynczy wybór z rzędu "piguł" (opcjonalny)
 --------------------------------------------------------- */
-function PillRow({ options, value, onChange, accentColor = COLORS.accent }) {
+function PillRow({ options, value, onChange, accentColor = COLORS.accent, multi = false }) {
   return (
     <div className="flex flex-wrap gap-2">
       {options.map((o) => {
-        const active = value === o.id;
+        const active = multi ? value.includes(o.id) : value === o.id;
+        const handleClick = () => {
+          if (multi) {
+            onChange(active ? value.filter((x) => x !== o.id) : [...value, o.id]);
+          } else {
+            onChange(active ? null : o.id);
+          }
+        };
         return (
           <button
             key={o.id}
-            onClick={() => onChange(active ? null : o.id)}
+            onClick={handleClick}
             className="rounded-full px-3.5 py-2 text-[12px] border transition-all"
             style={{
               background: active ? `${accentColor}22` : COLORS.surface,
@@ -570,13 +582,13 @@ function HomeScreen({ entries, onNewAttack, onOpenStats, onClearAll, onEditEntry
                         .join(" · ")
                     : "Brak zanotowanych objawów"}
                 </p>
-                {(e.location || e.duration) && (
+                {(locationLabels(e.location) || e.duration) && (
                   <p
                     className="text-[11px] mt-0.5 truncate"
                     style={{ color: COLORS.textMuted }}
                   >
                     {[
-                      e.location ? HEAD_LOCATIONS.find((x) => x.id === e.location)?.label : null,
+                      e.location ? locationLabels(e.location) : null,
                       e.duration ? DURATIONS.find((x) => x.id === e.duration)?.label : null,
                     ]
                       .filter(Boolean)
@@ -628,7 +640,15 @@ function FormScreen({ onCancel, onSave, onDelete, editingEntry }) {
   const [triggers, setTriggers] = useState(editingEntry ? editingEntry.triggers : []);
   const [duration, setDuration] = useState(editingEntry ? editingEntry.duration || null : null);
   const [medEffect, setMedEffect] = useState(editingEntry ? editingEntry.medEffect || null : null);
-  const [location, setLocation] = useState(editingEntry ? editingEntry.location || null : null);
+  const [location, setLocation] = useState(
+    editingEntry
+      ? Array.isArray(editingEntry.location)
+        ? editingEntry.location
+        : editingEntry.location
+        ? [editingEntry.location]
+        : []
+      : []
+  );
   const [prodrome, setProdrome] = useState(editingEntry ? editingEntry.prodrome || [] : []);
   const [postdrome, setPostdrome] = useState(editingEntry ? editingEntry.postdrome || [] : []);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -761,7 +781,7 @@ function FormScreen({ onCancel, onSave, onDelete, editingEntry }) {
             <MapPin size={12} />
             Lokalizacja bólu (opcjonalnie)
           </p>
-          <PillRow options={HEAD_LOCATIONS} value={location} onChange={setLocation} />
+          <PillRow options={HEAD_LOCATIONS} value={location} onChange={setLocation} multi />
         </div>
 
         {/* Czas trwania */}
@@ -1200,10 +1220,10 @@ function CalendarScreen({ entries, periodDays, onTogglePeriod, onEditEntry }) {
                     Edytuj
                   </button>
                 </div>
-                {(e.location || e.duration) && (
+                {(locationLabels(e.location) || e.duration) && (
                   <p className="text-[12px]" style={{ color: COLORS.textSecondary }}>
                     {[
-                      e.location ? HEAD_LOCATIONS.find((x) => x.id === e.location)?.label : null,
+                      locationLabels(e.location) || null,
                       e.duration ? `czas trwania: ${DURATIONS.find((x) => x.id === e.duration)?.label}` : null,
                     ]
                       .filter(Boolean)
