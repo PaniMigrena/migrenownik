@@ -87,6 +87,12 @@ const Upload = (p) => <IconBase {...p}><path d="M12 21V11" /><polyline points="7
 const FileText = (p) => <IconBase {...p}><path d="M7 3h7l4 4v14H7z" /><line x1="9" y1="11" x2="15" y2="11" /><line x1="9" y1="15" x2="15" y2="15" /></IconBase>;
 const MapPin = (p) => <IconBase {...p}><path d="M12 22s7-7.5 7-12a7 7 0 1 0-14 0c0 4.5 7 12 7 12z" /><circle cx="12" cy="10" r="2.5" /></IconBase>;
 const Clock = (p) => <IconBase {...p}><circle cx="12" cy="12" r="9" /><polyline points="12 7 12 12 16 14" /></IconBase>;
+const Lock = (p) => <IconBase {...p}><rect x="4" y="11" width="16" height="9" rx="2" /><path d="M7 11V7a5 5 0 0 1 10 0v4" /></IconBase>;
+const AlertTriangle = (p) => <IconBase {...p}><path d="M12 3 2 20h20L12 3z" /><line x1="12" y1="9" x2="12" y2="14" /><circle cx="12" cy="17" r="0.6" fill="currentColor" /></IconBase>;
+const FlaskConical = (p) => <IconBase {...p}><path d="M9 2v6L4 19a1 1 0 0 0 1 2h14a1 1 0 0 0 1-2l-5-11V2" /><line x1="8.5" y1="14" x2="15.5" y2="14" /><line x1="7" y1="2" x2="17" y2="2" /></IconBase>;
+const Smartphone = (p) => <IconBase {...p}><rect x="6" y="2" width="12" height="20" rx="2" /><line x1="11" y1="18" x2="13" y2="18" /></IconBase>;
+const MoreVertical = (p) => <IconBase {...p}><circle cx="12" cy="5" r="1" fill="currentColor" /><circle cx="12" cy="12" r="1" fill="currentColor" /><circle cx="12" cy="19" r="1" fill="currentColor" /></IconBase>;
+const Share2 = (p) => <IconBase {...p}><rect x="7" y="9" width="10" height="12" rx="2" /><polyline points="9 7 12 3 15 7" /><line x1="12" y1="3" x2="12" y2="14" /></IconBase>;
 
 /* ---------------------------------------------------------
    WYKRES BÓLU W CZASIE — prosty SVG, bez zależności
@@ -1861,6 +1867,7 @@ function App() {
   const [periodDays, setPeriodDays] = useState([]);
   const [patientName, setPatientName] = useState("");
   const [disclaimerAccepted, setDisclaimerAccepted] = useState(true);
+  const [onboardingStep, setOnboardingStep] = useState(1);
   const [loaded, setLoaded] = useState(false);
   const [editingEntry, setEditingEntry] = useState(null);
 
@@ -2103,42 +2110,143 @@ function App() {
 
         <div className="relative w-full h-full">
           {!disclaimerAccepted ? (
-            <div className="flex flex-col h-full px-6 py-10 justify-between animate-fade-in">
-              <div>
-                <div className="flex items-center gap-2 mb-6">
-                  <span
-                    className="text-[10px] tracking-wide rounded-full px-2 py-0.5"
-                    style={{ background: COLORS.surface2, color: COLORS.textSecondary, border: `1px solid ${COLORS.border}` }}
-                  >
-                    BETA
-                  </span>
+            onboardingStep === 1 ? (
+              <div className="flex flex-col h-full px-6 py-10 justify-between animate-fade-in">
+                <div>
+                  <div className="flex items-center gap-2 mb-6">
+                    <span
+                      className="text-[10px] tracking-wide rounded-full px-2 py-0.5"
+                      style={{ background: COLORS.surface2, color: COLORS.textSecondary, border: `1px solid ${COLORS.border}` }}
+                    >
+                      BETA
+                    </span>
+                  </div>
+                  <h1 className="font-serif text-2xl mb-1" style={{ color: COLORS.textPrimary }}>
+                    Witaj w Migrenowniku
+                  </h1>
+                  <p className="text-sm leading-relaxed mt-4" style={{ color: COLORS.textSecondary }}>
+                    Migrenownik pomaga prowadzić dziennik ataków migreny, objawów i możliwych wyzwalaczy.
+                  </p>
+
+                  <div className="flex items-start gap-3 mt-6">
+                    <Lock size={16} className="mt-0.5 flex-shrink-0" style={{ color: COLORS.accent }} />
+                    <p className="text-sm leading-relaxed" style={{ color: COLORS.textSecondary }}>
+                      Wszystkie Twoje dane pozostają wyłącznie na Twoim urządzeniu.
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-3 mt-4">
+                    <AlertTriangle size={16} className="mt-0.5 flex-shrink-0" style={{ color: "#b3684f" }} />
+                    <p className="text-sm leading-relaxed" style={{ color: COLORS.textSecondary }}>
+                      Migrenownik nie zastępuje porady lekarza i nie jest wyrobem medycznym.
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-3 mt-4">
+                    <FlaskConical size={16} className="mt-0.5 flex-shrink-0" style={{ color: COLORS.textMuted }} />
+                    <p className="text-sm leading-relaxed" style={{ color: COLORS.textSecondary }}>
+                      To wersja Beta — jeśli zauważysz błąd lub masz pomysł na nową funkcję, napisz na{" "}
+                      <a href="mailto:pani.migrena@gmail.com" className="underline" style={{ color: COLORS.accent }}>
+                        pani.migrena@gmail.com
+                      </a>
+                      .
+                    </p>
+                  </div>
                 </div>
-                <h1 className="font-serif text-2xl mb-5" style={{ color: COLORS.textPrimary }}>
-                  Zanim zaczniesz
-                </h1>
-                <p className="text-sm leading-relaxed" style={{ color: COLORS.textSecondary }}>
-                  Migrenownik jest narzędziem do prowadzenia własnych notatek dotyczących migreny.
-                  Nie jest wyrobem medycznym, nie stawia diagnoz i nie zastępuje konsultacji z lekarzem.
-                </p>
-                <p className="text-sm leading-relaxed mt-4" style={{ color: COLORS.textSecondary }}>
-                  To wersja testowa (Beta) — aplikacja jest rozwijana i może zawierać błędy.
-                </p>
-                <p className="text-sm leading-relaxed mt-4" style={{ color: COLORS.textSecondary }}>
-                  Masz pomysł lub znalazłaś/eś błąd? Napisz na{" "}
-                  <a href="mailto:pani.migrena@gmail.com" className="underline" style={{ color: COLORS.accent }}>
-                    pani.migrena@gmail.com
-                  </a>
-                  .
-                </p>
+                <button
+                  onClick={() => setOnboardingStep(2)}
+                  className="w-full rounded-2xl py-4 text-sm tracking-wide"
+                  style={{ background: COLORS.accent, color: COLORS.bg }}
+                >
+                  Dalej →
+                </button>
               </div>
-              <button
-                onClick={acceptDisclaimer}
-                className="w-full rounded-2xl py-4 text-sm tracking-wide"
-                style={{ background: COLORS.accent, color: COLORS.bg }}
-              >
-                Rozumiem, przejdź do aplikacji
-              </button>
-            </div>
+            ) : (
+              <div className="flex flex-col h-full px-6 py-8 justify-between animate-slide-in">
+                <div className="overflow-y-auto">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Smartphone size={18} style={{ color: COLORS.accent }} />
+                    <h1 className="font-serif text-xl" style={{ color: COLORS.textPrimary }}>
+                      Korzystaj jak z aplikacji
+                    </h1>
+                  </div>
+                  <p className="text-sm leading-relaxed" style={{ color: COLORS.textSecondary }}>
+                    Dodaj Migrenownik do ekranu głównego — uruchomi się z własnej ikony i będzie działać jak zwykła aplikacja.
+                  </p>
+
+                  {/* Android */}
+                  <div
+                    className="rounded-2xl border p-4 mt-5"
+                    style={{ background: COLORS.surface, borderColor: COLORS.border }}
+                  >
+                    <p className="text-[11px] uppercase tracking-[0.18em] mb-3" style={{ color: COLORS.textMuted }}>
+                      Android · Chrome
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <div className="flex flex-col items-center gap-1.5 flex-1">
+                        <div
+                          className="w-11 h-11 rounded-xl flex items-center justify-center"
+                          style={{ background: COLORS.surface2, border: `1px solid ${COLORS.border}` }}
+                        >
+                          <MoreVertical size={18} style={{ color: COLORS.textPrimary }} />
+                        </div>
+                        <span className="text-[10px] text-center" style={{ color: COLORS.textSecondary }}>Menu (⋮)</span>
+                      </div>
+                      <span style={{ color: COLORS.textMuted }}>→</span>
+                      <div className="flex flex-col items-center gap-1.5 flex-1">
+                        <div
+                          className="w-11 h-11 rounded-xl flex items-center justify-center"
+                          style={{ background: COLORS.surface2, border: `1px solid ${COLORS.border}` }}
+                        >
+                          <Plus size={18} style={{ color: COLORS.textPrimary }} />
+                        </div>
+                        <span className="text-[10px] text-center" style={{ color: COLORS.textSecondary }}>Dodaj do ekranu głównego</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* iPhone */}
+                  <div
+                    className="rounded-2xl border p-4 mt-3"
+                    style={{ background: COLORS.surface, borderColor: COLORS.border }}
+                  >
+                    <p className="text-[11px] uppercase tracking-[0.18em] mb-3" style={{ color: COLORS.textMuted }}>
+                      iPhone · Safari
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <div className="flex flex-col items-center gap-1.5 flex-1">
+                        <div
+                          className="w-11 h-11 rounded-xl flex items-center justify-center"
+                          style={{ background: COLORS.surface2, border: `1px solid ${COLORS.border}` }}
+                        >
+                          <Share2 size={18} style={{ color: COLORS.textPrimary }} />
+                        </div>
+                        <span className="text-[10px] text-center" style={{ color: COLORS.textSecondary }}>Udostępnij</span>
+                      </div>
+                      <span style={{ color: COLORS.textMuted }}>→</span>
+                      <div className="flex flex-col items-center gap-1.5 flex-1">
+                        <div
+                          className="w-11 h-11 rounded-xl flex items-center justify-center"
+                          style={{ background: COLORS.surface2, border: `1px solid ${COLORS.border}` }}
+                        >
+                          <Plus size={18} style={{ color: COLORS.textPrimary }} />
+                        </div>
+                        <span className="text-[10px] text-center" style={{ color: COLORS.textSecondary }}>Dodaj do ekranu głównego</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <p className="text-[11px] mt-4" style={{ color: COLORS.textMuted }}>
+                    Ten krok jest opcjonalny — możesz korzystać z Migrenownika również bez instalacji.
+                  </p>
+                </div>
+                <button
+                  onClick={acceptDisclaimer}
+                  className="w-full rounded-2xl py-4 text-sm tracking-wide mt-5"
+                  style={{ background: COLORS.accent, color: COLORS.bg }}
+                >
+                  Rozpocznij korzystanie
+                </button>
+              </div>
+            )
           ) : (
             <>
               {screen === "home" && (
