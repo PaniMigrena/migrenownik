@@ -9,10 +9,11 @@
     prosty mechanizm przeglądarki, service worker zajmuje się wyłącznie plikami
 */
 
-const CACHE_VERSION = "v2";
+const CACHE_VERSION = "v3";
 const CACHE_NAME = "migrenownik-cache-" + CACHE_VERSION;
 
-// Pliki tej samej witryny — zawsze potrzebne, żeby appka w ogóle wystartowała.
+// Wszystkie pliki appki są teraz lokalne (własny hosting) — bez CDN,
+// więc appka nie zależy od dostępności zewnętrznych serwerów przy starcie.
 const PRECACHE_SAME_ORIGIN = [
   "./",
   "./index.html",
@@ -21,33 +22,20 @@ const PRECACHE_SAME_ORIGIN = [
   "./icon-512.png",
   "./apple-touch-icon.png",
   "./favicon-32.png",
-];
-
-// Zewnętrzne skrypty (CDN) — cache'owane najlepiej jak się da, żeby appka
-// działała offline także po stronie React/Babel/Tailwind.
-const PRECACHE_CDN = [
-  "https://unpkg.com/react@18/umd/react.production.min.js",
-  "https://unpkg.com/react-dom@18/umd/react-dom.production.min.js",
-  "https://unpkg.com/@babel/standalone/babel.min.js",
-  "https://cdn.tailwindcss.com",
+  "./app.css",
+  "./app.min.js",
+  "./react.min.js",
+  "./react-dom.min.js",
 ];
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      const sameOrigin = Promise.allSettled(
+    caches.open(CACHE_NAME).then((cache) =>
+      Promise.allSettled(
         PRECACHE_SAME_ORIGIN.map((url) => cache.add(url).catch(() => null))
-      );
-      const cdn = Promise.allSettled(
-        PRECACHE_CDN.map((url) =>
-          fetch(url, { mode: "cors" })
-            .then((res) => (res && res.ok ? cache.put(url, res) : null))
-            .catch(() => null)
-        )
-      );
-      return Promise.all([sameOrigin, cdn]);
-    })
+      )
+    )
   );
 });
 
