@@ -1,0 +1,2311 @@
+import React, { useState, useMemo } from "react";
+import {
+  Plus,
+  ChevronLeft,
+  Home,
+  BarChart3,
+  Moon,
+  CloudRain,
+  Wine,
+  Zap,
+  Eye,
+  Volume2,
+  Pill,
+  Check,
+  Calendar,
+  Activity,
+  Utensils,
+  BatteryLow,
+  Trash2,
+  Droplet,
+  Download,
+  Upload,
+  FileText,
+  MapPin,
+  Clock,
+  Lock,
+  AlertTriangle,
+  FlaskConical,
+  Smartphone,
+  MoreVertical,
+  Share2,
+} from "lucide-react";
+import {
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+} from "recharts";
+
+/* ---------------------------------------------------------
+   TOKENS — stonowana, ciemna paleta „aury”: bez czerwieni,
+   bez jaskrawości. Skala bólu idzie od szałwiowej zieleni
+   przez ochrę do stonowanego wina i śliwki.
+--------------------------------------------------------- */
+const COLORS = {
+  bg: "#17171b",
+  surface: "#201f24",
+  surface2: "#28272d",
+  border: "#34333a",
+  textPrimary: "#dcdadf",
+  textSecondary: "#8f8d97",
+  textMuted: "#605f68",
+  accent: "#9b8fb0",
+  accentSoft: "#4c4656",
+};
+
+const painColor = (v) => {
+  if (v <= 3) return "#6b9080"; // łagodny — szałwia
+  if (v <= 6) return "#a68a64"; // umiarkowany — ochra
+  if (v <= 8) return "#b3684f"; // silny — przygaszona terakota
+  return "#5c4a6b"; // bardzo silny — głęboki, chłodny fiolet
+};
+
+const painLabel = (v) => {
+  if (v <= 3) return "Łagodny";
+  if (v <= 6) return "Umiarkowany";
+  if (v <= 8) return "Silny";
+  return "Bardzo silny";
+};
+
+const plAtak = (n) => {
+  if (n === 1) return "atak";
+  const mod10 = n % 10;
+  const mod100 = n % 100;
+  if (mod10 >= 2 && mod10 <= 4 && !(mod100 >= 12 && mod100 <= 14)) return "ataki";
+  return "ataków";
+};
+
+const SYMPTOMS = [
+  { id: "aura", label: "Aura", icon: Eye },
+  { id: "nudnosci", label: "Nudności", icon: Activity },
+  { id: "swiatlowstret", label: "Światłowstręt", icon: Zap },
+  { id: "haas", label: "Hałas", icon: Volume2 },
+];
+
+const TRIGGERS = [
+  { id: "stres", label: "Stres", icon: Activity },
+  { id: "sen", label: "Brak snu", icon: Moon },
+  { id: "pogoda", label: "Pogoda", icon: CloudRain },
+  { id: "alkohol", label: "Alkohol", icon: Wine },
+  { id: "dieta", label: "Dieta", icon: Utensils },
+  { id: "zmeczenie", label: "Zmęczenie", icon: BatteryLow },
+];
+
+const DURATIONS = [
+  { id: "lt1", label: "< 1 h" },
+  { id: "1-4", label: "1–4 h" },
+  { id: "4-12", label: "4–12 h" },
+  { id: "12-24", label: "12–24 h" },
+  { id: "gt24", label: "> 24 h" },
+];
+
+const MED_EFFECTS = [
+  { id: "pomogl", label: "Pomógł" },
+  { id: "czesciowo", label: "Częściowo" },
+  { id: "nie_pomogl", label: "Nie pomógł" },
+];
+
+const HEAD_LOCATIONS = [
+  { id: "cala", label: "Cała głowa" },
+  { id: "czolo", label: "Czoło" },
+  { id: "lewa_skron", label: "Lewa skroń" },
+  { id: "prawa_skron", label: "Prawa skroń" },
+  { id: "kark", label: "Kark / tył głowy" },
+];
+
+const locationLabels = (loc) => {
+  const arr = Array.isArray(loc) ? loc : loc ? [loc] : [];
+  return arr.map((id) => HEAD_LOCATIONS.find((x) => x.id === id)?.label).filter(Boolean).join(", ");
+};
+
+const PRODROME = [
+  { id: "zmeczenie_przed", label: "Nietypowe zmęczenie", icon: BatteryLow },
+  { id: "apetyt", label: "Wzmożony apetyt", icon: Utensils },
+  { id: "sztywnosc", label: "Sztywność karku", icon: Activity },
+  { id: "nastroj", label: "Zmiany nastroju", icon: Zap },
+];
+
+const POSTDROME = [
+  { id: "zmeczenie_po", label: "Wyczerpanie", icon: BatteryLow },
+  { id: "koncentracja", label: "Trudności z koncentracją", icon: Eye },
+  { id: "tkliwosc", label: "Tkliwość skóry głowy", icon: Volume2 },
+];
+
+const fmtDate = (iso) => {
+  const d = new Date(iso);
+  return d.toLocaleDateString("pl-PL", { day: "2-digit", month: "short" });
+};
+
+const SEED = [
+  {
+    id: 1,
+    date: "2026-07-29T08:20:00",
+    pain: 8,
+    symptoms: ["aura", "swiatlowstret"],
+    triggers: ["sen", "stres"],
+    medication: "Sumatryptan 50mg",
+  },
+  {
+    id: 2,
+    date: "2026-07-24T14:00:00",
+    pain: 5,
+    symptoms: ["nudnosci"],
+    triggers: ["pogoda"],
+    medication: "Ibuprofen 400mg",
+  },
+  {
+    id: 3,
+    date: "2026-07-18T19:40:00",
+    pain: 9,
+    symptoms: ["aura", "swiatlowstret", "haas"],
+    triggers: ["stres", "alkohol"],
+    medication: "Sumatryptan 50mg",
+  },
+  {
+    id: 4,
+    date: "2026-07-11T09:10:00",
+    pain: 3,
+    symptoms: ["nudnosci"],
+    triggers: ["sen"],
+    medication: "—",
+  },
+  {
+    id: 5,
+    date: "2026-07-05T22:15:00",
+    pain: 6,
+    symptoms: ["swiatlowstret", "haas"],
+    triggers: ["pogoda", "stres"],
+    medication: "Ibuprofen 400mg",
+  },
+];
+
+/* ---------------------------------------------------------
+   AURA RING — element sygnaturowy: koncentryczne, miękkie
+   pierścienie reagujące na intensywność bólu.
+--------------------------------------------------------- */
+function AuraRing({ value }) {
+  const c = painColor(value);
+  const rings = [1, 2, 3];
+  return (
+    <div className="relative w-40 h-40 mx-auto flex items-center justify-center">
+      {rings.map((r) => (
+        <div
+          key={r}
+          className="absolute rounded-full transition-all duration-500 ease-out"
+          style={{
+            width: `${60 + r * (18 + value * 2.2)}px`,
+            height: `${60 + r * (18 + value * 2.2)}px`,
+            border: `1px solid ${c}`,
+            opacity: 0.16 + (3 - r) * 0.06,
+          }}
+        />
+      ))}
+      <div
+        className="absolute rounded-full transition-all duration-500 ease-out flex items-center justify-center"
+        style={{
+          width: "76px",
+          height: "76px",
+          background: `radial-gradient(circle at 35% 30%, ${c}55, ${c}22 60%, transparent 75%)`,
+          border: `1px solid ${c}88`,
+        }}
+      >
+        <span
+          className="font-serif text-3xl tabular-nums"
+          style={{ color: COLORS.textPrimary }}
+        >
+          {value}
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function Tile({ active, icon: Icon, label, onClick, accentColor }) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex flex-col items-center justify-center gap-2 rounded-2xl py-4 transition-all duration-200 border"
+      style={{
+        background: active ? `${accentColor}1f` : COLORS.surface,
+        borderColor: active ? accentColor : COLORS.border,
+      }}
+    >
+      <Icon
+        size={20}
+        strokeWidth={1.6}
+        style={{ color: active ? accentColor : COLORS.textSecondary }}
+      />
+      <span
+        className="text-[12px] tracking-wide"
+        style={{ color: active ? COLORS.textPrimary : COLORS.textSecondary }}
+      >
+        {label}
+      </span>
+    </button>
+  );
+}
+
+/* ---------------------------------------------------------
+   PillRow — pojedynczy wybór z rzędu "piguł" (opcjonalny)
+--------------------------------------------------------- */
+function PillRow({ options, value, onChange, accentColor = COLORS.accent, multi = false }) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map((o) => {
+        const active = multi ? value.includes(o.id) : value === o.id;
+        const handleClick = () => {
+          if (multi) {
+            onChange(active ? value.filter((x) => x !== o.id) : [...value, o.id]);
+          } else {
+            onChange(active ? null : o.id);
+          }
+        };
+        return (
+          <button
+            key={o.id}
+            onClick={handleClick}
+            className="rounded-full px-3.5 py-2 text-[12px] border transition-all"
+            style={{
+              background: active ? `${accentColor}22` : COLORS.surface,
+              borderColor: active ? accentColor : COLORS.border,
+              color: active ? COLORS.textPrimary : COLORS.textSecondary,
+            }}
+          >
+            {o.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------
+   EKRAN GŁÓWNY
+--------------------------------------------------------- */
+function HomeScreen({ entries, onNewAttack, onOpenStats, onClearAll, onEditEntry }) {
+  const [confirmClear, setConfirmClear] = useState(false);
+  const thisMonth = useMemo(() => {
+    const now = new Date();
+    return entries.filter((e) => {
+      const d = new Date(e.date);
+      return (
+        d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+      );
+    });
+  }, [entries]);
+
+  const monthCount = thisMonth.filter((e) => !e.continuesPrevious).length;
+  const avgPain = entries.length
+    ? (entries.reduce((s, e) => s + e.pain, 0) / entries.length).toFixed(1)
+    : "—";
+  const todayLabel = new Date().toLocaleDateString("pl-PL", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+  const todayLabelCap = todayLabel.charAt(0).toUpperCase() + todayLabel.slice(1);
+
+  return (
+    <div className="flex flex-col h-full animate-fade-in">
+      <div className="px-5 pt-7 pb-4 flex items-start justify-between">
+        <div>
+          <p
+            className="text-[11px] uppercase tracking-[0.18em]"
+            style={{ color: COLORS.textMuted }}
+          >
+            {todayLabelCap}
+          </p>
+          <h1
+            className="font-serif text-[26px] mt-1 flex items-center gap-2"
+            style={{ color: COLORS.textPrimary }}
+          >
+            Dzienniczek Migren
+            <span
+              className="text-[10px] font-sans font-normal tracking-wide rounded-full px-2 py-0.5"
+              style={{ background: COLORS.surface2, color: COLORS.textSecondary, border: `1px solid ${COLORS.border}` }}
+            >
+              BETA
+            </span>
+          </h1>
+        </div>
+        {entries.length > 0 && (
+          <button
+            onClick={() => setConfirmClear(true)}
+            className="w-9 h-9 rounded-full flex items-center justify-center mt-1 flex-shrink-0"
+            style={{ background: COLORS.surface }}
+            aria-label="Wyczyść wpisy"
+          >
+            <Trash2 size={15} style={{ color: COLORS.textMuted }} />
+          </button>
+        )}
+      </div>
+
+      {confirmClear && (
+        <div className="px-5 pb-3 animate-fade-in">
+          <div
+            className="rounded-2xl p-4 border flex flex-col gap-3"
+            style={{ background: COLORS.surface, borderColor: "#b3684f55" }}
+          >
+            <p className="text-[13px]" style={{ color: COLORS.textPrimary }}>
+              Usunąć wszystkie zapisane wpisy? Tej operacji nie można cofnąć.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setConfirmClear(false)}
+                className="flex-1 rounded-xl py-2.5 text-sm"
+                style={{ background: COLORS.surface2, color: COLORS.textSecondary }}
+              >
+                Anuluj
+              </button>
+              <button
+                onClick={() => {
+                  onClearAll();
+                  setConfirmClear(false);
+                }}
+                className="flex-1 rounded-xl py-2.5 text-sm"
+                style={{ background: "#5c4a6b", color: COLORS.textPrimary }}
+              >
+                Usuń wszystko
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Statystyki skrócone */}
+      <div className="px-5 grid grid-cols-2 gap-3">
+        <div
+          className="rounded-2xl p-4 border"
+          style={{ background: COLORS.surface, borderColor: COLORS.border }}
+        >
+          <p
+            className="text-[11px] tracking-wide"
+            style={{ color: COLORS.textSecondary }}
+          >
+            Ataki w tym miesiącu
+          </p>
+          <p
+            className="font-serif text-3xl mt-1"
+            style={{ color: COLORS.textPrimary }}
+          >
+            {monthCount}
+          </p>
+        </div>
+        <div
+          className="rounded-2xl p-4 border"
+          style={{ background: COLORS.surface, borderColor: COLORS.border }}
+        >
+          <p
+            className="text-[11px] tracking-wide"
+            style={{ color: COLORS.textSecondary }}
+          >
+            Średni ból
+          </p>
+          <p
+            className="font-serif text-3xl mt-1"
+            style={{ color: painColor(Math.round(avgPain)) }}
+          >
+            {avgPain}
+            <span className="text-sm ml-1" style={{ color: COLORS.textMuted }}>
+              /10
+            </span>
+          </p>
+        </div>
+      </div>
+
+      {/* Przycisk zgłoszenia */}
+      <div className="px-5 mt-4">
+        <button
+          onClick={onNewAttack}
+          className="w-full rounded-2xl py-4 flex items-center justify-center gap-2 transition-transform active:scale-[0.98]"
+          style={{
+            background: COLORS.accentSoft,
+            border: `1px solid ${COLORS.accent}55`,
+          }}
+        >
+          <Plus size={18} style={{ color: COLORS.accent }} strokeWidth={2} />
+          <span
+            className="text-sm tracking-wide"
+            style={{ color: COLORS.textPrimary }}
+          >
+            Zgłoś nowy atak
+          </span>
+        </button>
+      </div>
+
+      {/* Historia */}
+      <div className="px-5 mt-6 flex-1 overflow-y-auto pb-24">
+        <p
+          className="text-[11px] uppercase tracking-[0.18em] mb-3"
+          style={{ color: COLORS.textMuted }}
+        >
+          Ostatnie wpisy
+        </p>
+        <div className="flex flex-col gap-2.5">
+          {entries.map((e) => (
+            <button
+              key={e.id}
+              onClick={() => onEditEntry(e)}
+              className="rounded-2xl p-3.5 border flex items-center gap-3 text-left w-full transition-colors active:scale-[0.99]"
+              style={{ background: COLORS.surface, borderColor: COLORS.border }}
+            >
+              <div
+                className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
+                style={{
+                  background: `${painColor(e.pain)}22`,
+                  border: `1px solid ${painColor(e.pain)}66`,
+                }}
+              >
+                <span
+                  className="font-serif text-sm"
+                  style={{ color: painColor(e.pain) }}
+                >
+                  {e.pain}
+                </span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between">
+                  <span
+                    className="text-sm flex items-center gap-1.5"
+                    style={{ color: COLORS.textPrimary }}
+                  >
+                    {fmtDate(e.date)}
+                    {e.continuesPrevious && (
+                      <span
+                        className="text-[9px] uppercase tracking-wide rounded-full px-1.5 py-0.5"
+                        style={{ background: COLORS.surface2, color: COLORS.textMuted, border: `1px solid ${COLORS.border}` }}
+                      >
+                        kontynuacja
+                      </span>
+                    )}
+                  </span>
+                  <span
+                    className="text-[11px]"
+                    style={{ color: painColor(e.pain) }}
+                  >
+                    {painLabel(e.pain)}
+                  </span>
+                </div>
+                <p
+                  className="text-[12px] mt-0.5 truncate"
+                  style={{ color: COLORS.textSecondary }}
+                >
+                  {e.symptoms.length
+                    ? e.symptoms
+                        .map((s) => SYMPTOMS.find((x) => x.id === s)?.label)
+                        .join(" · ")
+                    : "Brak zanotowanych objawów"}
+                </p>
+                {(locationLabels(e.location) || e.duration) && (
+                  <p
+                    className="text-[11px] mt-0.5 truncate"
+                    style={{ color: COLORS.textMuted }}
+                  >
+                    {[
+                      e.location ? locationLabels(e.location) : null,
+                      e.duration ? DURATIONS.find((x) => x.id === e.duration)?.label : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </p>
+                )}
+                {e.dietNote && (
+                  <p
+                    className="text-[11px] mt-0.5 truncate italic"
+                    style={{ color: COLORS.textMuted }}
+                  >
+                    Dieta: {e.dietNote}
+                  </p>
+                )}
+                {e.note && (
+                  <p
+                    className="text-[11px] mt-0.5 truncate italic"
+                    style={{ color: COLORS.textMuted }}
+                  >
+                    {e.note}
+                  </p>
+                )}
+              </div>
+            </button>
+          ))}
+          {entries.length === 0 && (
+            <div
+              className="rounded-2xl p-6 text-center border"
+              style={{ background: COLORS.surface, borderColor: COLORS.border }}
+            >
+              <p className="text-sm" style={{ color: COLORS.textSecondary }}>
+                Brak wpisów. Dodaj pierwszy atak, aby zacząć śledzić wzorce.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------
+   EKRAN FORMULARZA
+--------------------------------------------------------- */
+function FormScreen({ onCancel, onSave, onDelete, editingEntry }) {
+  const isEditing = !!editingEntry;
+  const [pain, setPain] = useState(editingEntry ? editingEntry.pain : 5);
+  const [symptoms, setSymptoms] = useState(editingEntry ? editingEntry.symptoms : []);
+  const [triggers, setTriggers] = useState(editingEntry ? editingEntry.triggers : []);
+  const [duration, setDuration] = useState(editingEntry ? editingEntry.duration || null : null);
+  const [medEffect, setMedEffect] = useState(editingEntry ? editingEntry.medEffect || null : null);
+  const [location, setLocation] = useState(
+    editingEntry
+      ? Array.isArray(editingEntry.location)
+        ? editingEntry.location
+        : editingEntry.location
+        ? [editingEntry.location]
+        : []
+      : []
+  );
+  const [prodrome, setProdrome] = useState(editingEntry ? editingEntry.prodrome || [] : []);
+  const [postdrome, setPostdrome] = useState(editingEntry ? editingEntry.postdrome || [] : []);
+  const [continuesPrevious, setContinuesPrevious] = useState(
+    editingEntry ? !!editingEntry.continuesPrevious : false
+  );
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const medicationRef = React.useRef(null);
+  const dietNoteRef = React.useRef(null);
+  const noteRef = React.useRef(null);
+
+  const toggle = (arr, setArr, id) =>
+    setArr(arr.includes(id) ? arr.filter((x) => x !== id) : [...arr, id]);
+
+  const handleSave = () => {
+    onSave({
+      id: isEditing ? editingEntry.id : Date.now(),
+      date: isEditing ? editingEntry.date : new Date().toISOString(),
+      pain,
+      symptoms,
+      triggers,
+      duration,
+      medEffect,
+      location,
+      prodrome,
+      postdrome,
+      continuesPrevious,
+      medication:
+        medicationRef.current && medicationRef.current.value.trim()
+          ? medicationRef.current.value.trim()
+          : "—",
+      dietNote:
+        triggers.includes("dieta") && dietNoteRef.current
+          ? dietNoteRef.current.value.trim()
+          : "",
+      note: noteRef.current ? noteRef.current.value.trim() : "",
+    });
+  };
+
+  return (
+    <div className="flex flex-col h-full animate-slide-in">
+      <div
+        className="px-4 pt-6 pb-3 flex items-center gap-2 border-b"
+        style={{ borderColor: COLORS.border }}
+      >
+        <button
+          onClick={onCancel}
+          className="w-9 h-9 rounded-full flex items-center justify-center"
+          style={{ background: COLORS.surface }}
+        >
+          <ChevronLeft size={18} style={{ color: COLORS.textSecondary }} />
+        </button>
+        <h2
+          className="font-serif text-lg flex-1"
+          style={{ color: COLORS.textPrimary }}
+        >
+          {isEditing ? "Edytuj wpis" : "Nowy atak"}
+        </h2>
+        {isEditing && (
+          <button
+            onClick={() => setConfirmDelete(true)}
+            className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+            style={{ background: COLORS.surface }}
+            aria-label="Usuń wpis"
+          >
+            <Trash2 size={15} style={{ color: COLORS.textMuted }} />
+          </button>
+        )}
+      </div>
+
+      {confirmDelete && (
+        <div className="px-5 pt-3 animate-fade-in">
+          <div
+            className="rounded-2xl p-4 border flex flex-col gap-3"
+            style={{ background: COLORS.surface, borderColor: "#b3684f55" }}
+          >
+            <p className="text-[13px]" style={{ color: COLORS.textPrimary }}>
+              Usunąć ten wpis? Tej operacji nie można cofnąć.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setConfirmDelete(false)}
+                className="flex-1 rounded-xl py-2.5 text-sm"
+                style={{ background: COLORS.surface2, color: COLORS.textSecondary }}
+              >
+                Anuluj
+              </button>
+              <button
+                onClick={() => onDelete(editingEntry.id)}
+                className="flex-1 rounded-xl py-2.5 text-sm"
+                style={{ background: "#5c4a6b", color: COLORS.textPrimary }}
+              >
+                Usuń wpis
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="flex-1 overflow-y-auto px-5 pt-5 pb-28">
+        {/* Kontynuacja poprzedniego ataku */}
+        <button
+          onClick={() => setContinuesPrevious((v) => !v)}
+          className="w-full flex items-center gap-3 rounded-2xl p-3.5 border mb-6 text-left transition-all"
+          style={{
+            background: continuesPrevious ? `${COLORS.accent}1f` : COLORS.surface,
+            borderColor: continuesPrevious ? COLORS.accent : COLORS.border,
+          }}
+        >
+          <div
+            className="w-9 h-5 rounded-full flex-shrink-0 relative transition-all"
+            style={{ background: continuesPrevious ? COLORS.accent : COLORS.surface2 }}
+          >
+            <span
+              className="absolute top-0.5 w-4 h-4 rounded-full transition-all"
+              style={{
+                background: COLORS.bg,
+                left: continuesPrevious ? "18px" : "2px",
+              }}
+            />
+          </div>
+          <span className="text-[13px]" style={{ color: COLORS.textPrimary }}>
+            To kontynuacja poprzedniego ataku
+          </span>
+        </button>
+
+        {/* Intensywność bólu */}
+        <AuraRing value={pain} />
+        <p
+          className="text-center text-sm mt-3"
+          style={{ color: painColor(pain) }}
+        >
+          {painLabel(pain)}
+        </p>
+
+        <div className="mt-5">
+          <input
+            type="range"
+            min={1}
+            max={10}
+            value={pain}
+            onChange={(e) => setPain(Number(e.target.value))}
+            className="w-full accent-current"
+            style={{ accentColor: painColor(pain) }}
+          />
+          <div
+            className="flex justify-between text-[10px] mt-1"
+            style={{ color: COLORS.textMuted }}
+          >
+            <span>1 · łagodny</span>
+            <span>10 · bardzo silny</span>
+          </div>
+        </div>
+
+        {/* Lokalizacja bólu */}
+        <div className="mt-8">
+          <p
+            className="text-[11px] uppercase tracking-[0.18em] mb-3 flex items-center gap-1.5"
+            style={{ color: COLORS.textMuted }}
+          >
+            <MapPin size={12} />
+            Lokalizacja bólu (opcjonalnie)
+          </p>
+          <PillRow options={HEAD_LOCATIONS} value={location} onChange={setLocation} multi />
+        </div>
+
+        {/* Czas trwania */}
+        <div className="mt-6">
+          <p
+            className="text-[11px] uppercase tracking-[0.18em] mb-3 flex items-center gap-1.5"
+            style={{ color: COLORS.textMuted }}
+          >
+            <Clock size={12} />
+            Czas trwania (opcjonalnie)
+          </p>
+          <PillRow options={DURATIONS} value={duration} onChange={setDuration} />
+        </div>
+
+        {/* Objawy zapowiadające (prodrom) */}
+        <div className="mt-8">
+          <p
+            className="text-[11px] uppercase tracking-[0.18em] mb-3"
+            style={{ color: COLORS.textMuted }}
+          >
+            Objawy zapowiadające, przed atakiem (opcjonalnie)
+          </p>
+          <div className="grid grid-cols-2 gap-2.5">
+            {PRODROME.map((s) => (
+              <Tile
+                key={s.id}
+                icon={s.icon}
+                label={s.label}
+                active={prodrome.includes(s.id)}
+                accentColor="#6b8a94"
+                onClick={() => toggle(prodrome, setProdrome, s.id)}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Objawy */}
+        <div className="mt-8">
+          <p
+            className="text-[11px] uppercase tracking-[0.18em] mb-3"
+            style={{ color: COLORS.textMuted }}
+          >
+            Objawy
+          </p>
+          <div className="grid grid-cols-2 gap-2.5">
+            {SYMPTOMS.map((s) => (
+              <Tile
+                key={s.id}
+                icon={s.icon}
+                label={s.label}
+                active={symptoms.includes(s.id)}
+                accentColor={COLORS.accent}
+                onClick={() => toggle(symptoms, setSymptoms, s.id)}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Triggery */}
+        <div className="mt-6">
+          <p
+            className="text-[11px] uppercase tracking-[0.18em] mb-3"
+            style={{ color: COLORS.textMuted }}
+          >
+            Możliwe wyzwalacze
+          </p>
+          <div className="grid grid-cols-2 gap-2.5">
+            {TRIGGERS.map((t) => (
+              <Tile
+                key={t.id}
+                icon={t.icon}
+                label={t.label}
+                active={triggers.includes(t.id)}
+                accentColor="#a68a64"
+                onClick={() => toggle(triggers, setTriggers, t.id)}
+              />
+            ))}
+          </div>
+
+          {triggers.includes("dieta") && (
+            <div className="mt-3 animate-fade-in">
+              <p
+                className="text-[11px] mb-2"
+                style={{ color: COLORS.textSecondary }}
+              >
+                Co jadłaś/eś przed atakiem? (opcjonalnie)
+              </p>
+              <textarea
+                ref={dietNoteRef}
+                defaultValue={editingEntry ? editingEntry.dietNote || "" : ""}
+                placeholder="np. czekolada, wino, ser żółty, pominięty posiłek…"
+                rows={2}
+                className="w-full rounded-2xl px-4 py-3 border bg-transparent outline-none text-sm resize-none placeholder:opacity-60"
+                style={{
+                  background: COLORS.surface,
+                  borderColor: COLORS.border,
+                  color: COLORS.textPrimary,
+                }}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Lek */}
+        <div className="mt-6">
+          <p
+            className="text-[11px] uppercase tracking-[0.18em] mb-3"
+            style={{ color: COLORS.textMuted }}
+          >
+            Przyjęty lek
+          </p>
+          <div
+            className="flex items-center gap-2 rounded-2xl px-4 py-3 border"
+            style={{ background: COLORS.surface, borderColor: COLORS.border }}
+          >
+            <Pill size={16} style={{ color: COLORS.textSecondary }} />
+            <input
+              ref={medicationRef}
+              defaultValue={editingEntry && editingEntry.medication !== "—" ? editingEntry.medication : ""}
+              placeholder="np. Sumatryptan 50mg"
+              className="bg-transparent outline-none text-sm flex-1 placeholder:opacity-60"
+              style={{ color: COLORS.textPrimary }}
+            />
+          </div>
+          <div className="mt-2.5">
+            <PillRow options={MED_EFFECTS} value={medEffect} onChange={setMedEffect} accentColor="#a68a64" />
+          </div>
+        </div>
+
+        {/* Objawy po ataku (postdrom) */}
+        <div className="mt-6">
+          <p
+            className="text-[11px] uppercase tracking-[0.18em] mb-3"
+            style={{ color: COLORS.textMuted }}
+          >
+            Objawy po ataku, "kac migrenowy" (opcjonalnie)
+          </p>
+          <div className="grid grid-cols-2 gap-2.5">
+            {POSTDROME.map((s) => (
+              <Tile
+                key={s.id}
+                icon={s.icon}
+                label={s.label}
+                active={postdrome.includes(s.id)}
+                accentColor="#6b8a94"
+                onClick={() => toggle(postdrome, setPostdrome, s.id)}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Notatka */}
+        <div className="mt-6">
+          <p
+            className="text-[11px] uppercase tracking-[0.18em] mb-3"
+            style={{ color: COLORS.textMuted }}
+          >
+            Notatka (opcjonalnie)
+          </p>
+          <textarea
+            ref={noteRef}
+            defaultValue={editingEntry ? editingEntry.note || "" : ""}
+            placeholder="np. ból ustąpił po godzinie od zażycia leku…"
+            rows={3}
+            className="w-full rounded-2xl px-4 py-3 border bg-transparent outline-none text-sm resize-none placeholder:opacity-60"
+            style={{
+              background: COLORS.surface,
+              borderColor: COLORS.border,
+              color: COLORS.textPrimary,
+            }}
+          />
+        </div>
+      </div>
+
+      {/* Zapisz */}
+      <div
+        className="absolute bottom-0 left-0 right-0 px-5 pb-6 pt-4"
+        style={{
+          background: `linear-gradient(to top, ${COLORS.bg} 60%, transparent)`,
+        }}
+      >
+        <button
+          onClick={handleSave}
+          className="w-full rounded-2xl py-4 flex items-center justify-center gap-2 transition-transform active:scale-[0.98]"
+          style={{ background: COLORS.accent }}
+        >
+          <Check size={18} style={{ color: COLORS.bg }} strokeWidth={2.2} />
+          <span
+            className="text-sm tracking-wide font-medium"
+            style={{ color: COLORS.bg }}
+          >
+            {isEditing ? "Zapisz zmiany" : "Zapisz wpis"}
+          </span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------
+   EKRAN KALENDARZA
+--------------------------------------------------------- */
+const pad2 = (n) => String(n).padStart(2, "0");
+const dateKey = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+const WEEKDAYS_PL = ["Pn", "Wt", "Śr", "Cz", "Pt", "So", "Nd"];
+
+const PERIOD_COLOR = "#c1524f"; // stonowana czerwień — wyłącznie do znacznika miesiączki
+
+function CalendarScreen({ entries, periodDays, onTogglePeriod, onEditEntry }) {
+  const [cursor, setCursor] = useState(() => {
+    const d = new Date();
+    return { year: d.getFullYear(), month: d.getMonth() };
+  });
+  const [selectedKey, setSelectedKey] = useState(null);
+  const [markMode, setMarkMode] = useState(false);
+
+  const todayKey = dateKey(new Date());
+  const periodSet = useMemo(() => new Set(periodDays), [periodDays]);
+
+  const entriesByDay = useMemo(() => {
+    const map = {};
+    entries.forEach((e) => {
+      const k = dateKey(new Date(e.date));
+      if (!map[k]) map[k] = [];
+      map[k].push(e);
+    });
+    return map;
+  }, [entries]);
+
+  const grid = useMemo(() => {
+    const { year, month } = cursor;
+    const firstDay = new Date(year, month, 1);
+    const leading = (firstDay.getDay() + 6) % 7; // poniedziałek = 0
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const cells = [];
+    for (let i = 0; i < leading; i++) cells.push(null);
+    for (let day = 1; day <= daysInMonth; day++) cells.push(new Date(year, month, day));
+    while (cells.length % 7 !== 0) cells.push(null);
+    const weeks = [];
+    for (let i = 0; i < cells.length; i += 7) weeks.push(cells.slice(i, i + 7));
+    return weeks;
+  }, [cursor]);
+
+  const monthLabel = new Date(cursor.year, cursor.month, 1)
+    .toLocaleDateString("pl-PL", { month: "long", year: "numeric" });
+
+  const changeMonth = (delta) => {
+    setSelectedKey(null);
+    setCursor((c) => {
+      let month = c.month + delta;
+      let year = c.year;
+      if (month < 0) { month = 11; year -= 1; }
+      if (month > 11) { month = 0; year += 1; }
+      return { year, month };
+    });
+  };
+
+  // Podsumowanie miesiąca
+  const monthSummary = useMemo(() => {
+    const counts = { mild: 0, moderate: 0, severe: 0, extreme: 0, medicated: 0, total: 0, period: 0, overlap: 0 };
+    Object.entries(entriesByDay).forEach(([k, list]) => {
+      const [y, m] = k.split("-").map(Number);
+      if (y !== cursor.year || m - 1 !== cursor.month) return;
+      const maxPain = Math.max(...list.map((e) => e.pain));
+      counts.total += 1;
+      if (maxPain <= 3) counts.mild += 1;
+      else if (maxPain <= 6) counts.moderate += 1;
+      else if (maxPain <= 8) counts.severe += 1;
+      else counts.extreme += 1;
+      if (list.some((e) => e.medication && e.medication !== "—")) counts.medicated += 1;
+      if (periodSet.has(k)) counts.overlap += 1;
+    });
+    periodDays.forEach((k) => {
+      const [y, m] = k.split("-").map(Number);
+      if (y === cursor.year && m - 1 === cursor.month) counts.period += 1;
+    });
+    return counts;
+  }, [entriesByDay, cursor, periodSet, periodDays]);
+
+  const selectedEntries = selectedKey ? entriesByDay[selectedKey] || [] : [];
+
+  const handleDayClick = (k, hasEntries) => {
+    if (markMode) {
+      onTogglePeriod(k);
+      return;
+    }
+    if (hasEntries) setSelectedKey(selectedKey === k ? null : k);
+  };
+
+  return (
+    <div className="flex flex-col h-full animate-fade-in">
+      <div className="px-5 pt-7 pb-4">
+        <p className="text-[11px] uppercase tracking-[0.18em]" style={{ color: COLORS.textMuted }}>
+          Przegląd miesiąca
+        </p>
+        <h1 className="font-serif text-[24px] mt-1" style={{ color: COLORS.textPrimary }}>
+          Kalendarz
+        </h1>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-5 pb-24">
+        {/* Nawigacja miesiąca */}
+        <div className="flex items-center justify-between mb-3">
+          <button
+            onClick={() => changeMonth(-1)}
+            className="w-8 h-8 rounded-full flex items-center justify-center"
+            style={{ background: COLORS.surface }}
+          >
+            <ChevronLeft size={15} style={{ color: COLORS.textSecondary }} />
+          </button>
+          <span className="text-sm capitalize" style={{ color: COLORS.textPrimary }}>
+            {monthLabel}
+          </span>
+          <button
+            onClick={() => changeMonth(1)}
+            className="w-8 h-8 rounded-full flex items-center justify-center"
+            style={{ background: COLORS.surface }}
+          >
+            <ChevronLeft
+              size={15}
+              style={{ color: COLORS.textSecondary, transform: "rotate(180deg)" }}
+            />
+          </button>
+        </div>
+
+        {/* Przełącznik trybu oznaczania miesiączki */}
+        <div className="flex items-center justify-between mt-3 mb-3">
+          <button
+            onClick={() => { setMarkMode((m) => !m); setSelectedKey(null); }}
+            className="flex items-center gap-1.5 rounded-full px-3.5 py-2 text-[12px] transition-all"
+            style={{
+              background: markMode ? `${PERIOD_COLOR}25` : COLORS.surface,
+              border: `1px solid ${markMode ? PERIOD_COLOR : COLORS.border}`,
+              color: markMode ? PERIOD_COLOR : COLORS.textSecondary,
+            }}
+          >
+            <Droplet size={13} />
+            {markMode ? "Zakończ oznaczanie" : "Zaznacz miesiączkę"}
+          </button>
+        </div>
+        {markMode && (
+          <p className="text-[11px] mb-2 -mt-1" style={{ color: COLORS.textMuted }}>
+            Dotykaj dni w kalendarzu, aby oznaczyć lub odznaczyć miesiączkę.
+          </p>
+        )}
+        <div
+          className="rounded-2xl p-3 border"
+          style={{ background: COLORS.surface, borderColor: COLORS.border }}
+        >
+          <div className="grid grid-cols-7 mb-2">
+            {WEEKDAYS_PL.map((w) => (
+              <div
+                key={w}
+                className="text-center text-[10px]"
+                style={{ color: COLORS.textMuted }}
+              >
+                {w}
+              </div>
+            ))}
+          </div>
+          <div className="flex flex-col gap-1.5">
+            {grid.map((week, wi) => (
+              <div key={wi} className="grid grid-cols-7 gap-1.5">
+                {week.map((d, di) => {
+                  if (!d) return <div key={di} />;
+                  const k = dateKey(d);
+                  const dayEntries = entriesByDay[k];
+                  const isToday = k === todayKey;
+                  const isSelected = k === selectedKey;
+                  const isPeriod = periodSet.has(k);
+                  const maxPain = dayEntries
+                    ? Math.max(...dayEntries.map((e) => e.pain))
+                    : null;
+                  const c = maxPain !== null ? painColor(maxPain) : null;
+                  return (
+                    <button
+                      key={di}
+                      onClick={() => handleDayClick(k, !!dayEntries)}
+                      className="relative aspect-square rounded-xl flex items-center justify-center text-[12px] transition-all"
+                      style={{
+                        background: c ? `${c}30` : "transparent",
+                        border: isSelected
+                          ? `1.5px solid ${c || COLORS.accent}`
+                          : isToday
+                          ? `1px solid ${COLORS.accent}70`
+                          : markMode
+                          ? `1px dashed ${COLORS.border}`
+                          : "1px solid transparent",
+                        color: c ? COLORS.textPrimary : COLORS.textSecondary,
+                      }}
+                    >
+                      {d.getDate()}
+                      {isPeriod && (
+                        <Droplet
+                          size={11}
+                          className="absolute bottom-0.5 left-1/2 -translate-x-1/2"
+                          color={PERIOD_COLOR}
+                          fill={PERIOD_COLOR}
+                        />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Szybki podgląd wybranego dnia */}
+        {selectedKey && selectedEntries.length > 0 && (
+          <div className="mt-4 animate-fade-in flex flex-col gap-2.5">
+            <p className="text-[11px] uppercase tracking-[0.18em]" style={{ color: COLORS.textMuted }}>
+              {new Date(selectedKey).toLocaleDateString("pl-PL", {
+                day: "numeric",
+                month: "long",
+              })}
+            </p>
+            {selectedEntries.map((e) => (
+              <div
+                key={e.id}
+                className="rounded-2xl p-3.5 border"
+                style={{ background: COLORS.surface, borderColor: COLORS.border }}
+              >
+                <div className="flex items-center justify-between mb-1.5">
+                  <span
+                    className="text-sm font-serif flex items-center gap-1.5"
+                    style={{ color: painColor(e.pain) }}
+                  >
+                    Ból {e.pain}/10 · {painLabel(e.pain)}
+                    {e.continuesPrevious && (
+                      <span
+                        className="text-[9px] uppercase tracking-wide rounded-full px-1.5 py-0.5"
+                        style={{ background: COLORS.surface2, color: COLORS.textMuted, border: `1px solid ${COLORS.border}` }}
+                      >
+                        kontynuacja
+                      </span>
+                    )}
+                  </span>
+                  <button
+                    onClick={() => onEditEntry(e)}
+                    className="text-[11px] px-2.5 py-1 rounded-full"
+                    style={{ background: COLORS.surface2, color: COLORS.textSecondary }}
+                  >
+                    Edytuj
+                  </button>
+                </div>
+                {(locationLabels(e.location) || e.duration) && (
+                  <p className="text-[12px]" style={{ color: COLORS.textSecondary }}>
+                    {[
+                      locationLabels(e.location) || null,
+                      e.duration ? `czas trwania: ${DURATIONS.find((x) => x.id === e.duration)?.label}` : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </p>
+                )}
+                {e.symptoms.length > 0 && (
+                  <p className="text-[12px] mt-0.5" style={{ color: COLORS.textSecondary }}>
+                    Objawy: {e.symptoms.map((s) => SYMPTOMS.find((x) => x.id === s)?.label).join(", ")}
+                  </p>
+                )}
+                {e.prodrome && e.prodrome.length > 0 && (
+                  <p className="text-[12px] mt-0.5" style={{ color: COLORS.textSecondary }}>
+                    Zapowiedzi: {e.prodrome.map((p) => PRODROME.find((x) => x.id === p)?.label).join(", ")}
+                  </p>
+                )}
+                {e.postdrome && e.postdrome.length > 0 && (
+                  <p className="text-[12px] mt-0.5" style={{ color: COLORS.textSecondary }}>
+                    Po ataku: {e.postdrome.map((p) => POSTDROME.find((x) => x.id === p)?.label).join(", ")}
+                  </p>
+                )}
+                {e.triggers.length > 0 && (
+                  <p className="text-[12px] mt-0.5" style={{ color: COLORS.textSecondary }}>
+                    Wyzwalacze: {e.triggers.map((t) => TRIGGERS.find((x) => x.id === t)?.label).join(", ")}
+                  </p>
+                )}
+                {e.medication && e.medication !== "—" && (
+                  <p className="text-[12px] mt-0.5" style={{ color: COLORS.textSecondary }}>
+                    Lek: {e.medication}
+                    {e.medEffect ? ` — ${MED_EFFECTS.find((x) => x.id === e.medEffect)?.label}` : ""}
+                  </p>
+                )}
+                {e.dietNote && (
+                  <p className="text-[12px] mt-0.5 italic" style={{ color: COLORS.textMuted }}>
+                    Dieta: {e.dietNote}
+                  </p>
+                )}
+                {e.note && (
+                  <p className="text-[12px] mt-0.5 italic" style={{ color: COLORS.textMuted }}>
+                    {e.note}
+                  </p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Legenda */}
+        <div className="flex items-center gap-3 mt-4 flex-wrap">
+          {[
+            { label: "Łagodny", color: "#6b9080" },
+            { label: "Umiarkowany", color: "#a68a64" },
+            { label: "Silny", color: "#b3684f" },
+            { label: "B. silny", color: "#5c4a6b" },
+          ].map((l) => (
+            <div key={l.label} className="flex items-center gap-1.5">
+              <span
+                className="w-4 h-4 rounded-md"
+                style={{ background: `${l.color}30`, border: `1px solid ${l.color}` }}
+              />
+              <span className="text-[11px]" style={{ color: COLORS.textSecondary }}>
+                {l.label}
+              </span>
+            </div>
+          ))}
+          <div className="flex items-center gap-1.5">
+            <Droplet size={13} color={PERIOD_COLOR} fill={PERIOD_COLOR} />
+            <span className="text-[11px]" style={{ color: COLORS.textSecondary }}>
+              Miesiączka
+            </span>
+          </div>
+        </div>
+
+        {/* Podsumowanie miesiąca */}
+        <div
+          className="rounded-2xl p-4 border mt-5"
+          style={{ background: COLORS.surface, borderColor: COLORS.border }}
+        >
+          <p className="text-sm mb-3" style={{ color: COLORS.textPrimary }}>
+            Podsumowanie miesiąca
+          </p>
+          <div className="grid grid-cols-2 gap-2.5 text-[12px]" style={{ color: COLORS.textSecondary }}>
+            <p>Dni z atakiem: <span style={{ color: COLORS.textPrimary }}>{monthSummary.total}</span></p>
+            <p>Dni z lekiem: <span style={{ color: COLORS.textPrimary }}>{monthSummary.medicated}</span></p>
+            <p>Łagodne: <span style={{ color: "#6b9080" }}>{monthSummary.mild}</span></p>
+            <p>Umiarkowane: <span style={{ color: "#a68a64" }}>{monthSummary.moderate}</span></p>
+            <p>Silne: <span style={{ color: "#b3684f" }}>{monthSummary.severe}</span></p>
+            <p>Bardzo silne: <span style={{ color: "#5c4a6b" }}>{monthSummary.extreme}</span></p>
+            <p>Dni miesiączki: <span style={{ color: PERIOD_COLOR }}>{monthSummary.period}</span></p>
+            <p>Ataki w trakcie miesiączki: <span style={{ color: PERIOD_COLOR }}>{monthSummary.overlap}</span></p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------
+   EKRAN STATYSTYK
+--------------------------------------------------------- */
+function StatsScreen({ entries, periodDays, onExportData, onImportData, onExportReport, patientName, onChangeName }) {
+  const fileInputRef = React.useRef(null);
+  const [showMidas, setShowMidas] = useState(false);
+  const [midasAnswers, setMidasAnswers] = useState(["", "", "", "", ""]);
+  const [weatherState, setWeatherState] = useState({ status: "idle", result: null, error: null });
+  const monthlyCounts = useMemo(() => {
+    const map = {};
+    entries.forEach((e) => {
+      if (e.continuesPrevious) return;
+      const d = new Date(e.date);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+      map[key] = (map[key] || 0) + 1;
+    });
+    const list = Object.entries(map)
+      .map(([key, count]) => {
+        const [y, m] = key.split("-");
+        const label = new Date(Number(y), Number(m) - 1, 1).toLocaleDateString(
+          "pl-PL",
+          { month: "long", year: "numeric" }
+        );
+        return { key, label, count };
+      })
+      .sort((a, b) => a.key.localeCompare(b.key));
+    const max = Math.max(1, ...list.map((x) => x.count));
+    return { list, max };
+  }, [entries]);
+
+  const triggerCounts = useMemo(() => {
+    const map = {};
+    TRIGGERS.forEach((t) => (map[t.id] = 0));
+    entries.forEach((e) => e.triggers.forEach((t) => (map[t] = (map[t] || 0) + 1)));
+    const max = Math.max(1, ...Object.values(map));
+    return TRIGGERS.map((t) => ({ ...t, count: map[t.id] || 0, max }));
+  }, [entries]);
+
+  const chartData = useMemo(
+    () =>
+      [...entries]
+        .sort((a, b) => new Date(a.date) - new Date(b.date))
+        .map((e) => ({ date: fmtDate(e.date), Ból: e.pain })),
+    [entries]
+  );
+
+  const avgPain = entries.length
+    ? (entries.reduce((s, e) => s + e.pain, 0) / entries.length).toFixed(1)
+    : "0";
+
+  const midasTotal = midasAnswers.reduce((sum, v) => sum + (parseInt(v, 10) || 0), 0);
+  const midasGrade =
+    midasTotal <= 5
+      ? "Stopień I — minimalne ograniczenie"
+      : midasTotal <= 10
+      ? "Stopień II — łagodne ograniczenie"
+      : midasTotal <= 20
+      ? "Stopień III — umiarkowane ograniczenie"
+      : "Stopień IV — poważne ograniczenie";
+  const midasHasAnswers = midasAnswers.some((v) => v !== "");
+
+  const checkWeatherCorrelation = () => {
+    if (entries.length < 5) {
+      setWeatherState({ status: "error", result: null, error: "Potrzeba co najmniej 5 zapisanych ataków, żeby porównanie miało sens." });
+      return;
+    }
+    setWeatherState({ status: "loading", result: null, error: null });
+    if (!navigator.geolocation) {
+      setWeatherState({ status: "error", result: null, error: "Twoja przeglądarka nie obsługuje lokalizacji." });
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const { latitude, longitude } = pos.coords;
+          const sorted = [...entries].sort((a, b) => new Date(a.date) - new Date(b.date));
+          const earliestDate = new Date(sorted[0].date);
+          const ninetyDaysAgo = new Date();
+          ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
+          const start = earliestDate > ninetyDaysAgo ? earliestDate : ninetyDaysAgo;
+          const end = new Date();
+          end.setDate(end.getDate() - 1);
+          const fmt = (d) => dateKey(d);
+          const url = `https://archive-api.open-meteo.com/v1/archive?latitude=${latitude}&longitude=${longitude}&start_date=${fmt(start)}&end_date=${fmt(end)}&hourly=surface_pressure&timezone=auto`;
+          const res = await fetch(url);
+          const data = await res.json();
+          if (!data.hourly || !data.hourly.time) throw new Error("Brak danych pogodowych");
+
+          const dailyPressures = {};
+          data.hourly.time.forEach((t, i) => {
+            const day = t.slice(0, 10);
+            if (!dailyPressures[day]) dailyPressures[day] = [];
+            dailyPressures[day].push(data.hourly.surface_pressure[i]);
+          });
+          const dailyAvg = {};
+          Object.entries(dailyPressures).forEach(([day, vals]) => {
+            dailyAvg[day] = vals.reduce((s, v) => s + v, 0) / vals.length;
+          });
+
+          const attackDays = new Set(entries.map((e) => dateKey(new Date(e.date))));
+          const attackPressures = [];
+          const otherPressures = [];
+          Object.entries(dailyAvg).forEach(([day, p]) => {
+            if (attackDays.has(day)) attackPressures.push(p);
+            else otherPressures.push(p);
+          });
+
+          if (attackPressures.length < 3 || otherPressures.length < 3) {
+            setWeatherState({ status: "error", result: null, error: "Za mało danych pogodowych w tym okresie, żeby porównać." });
+            return;
+          }
+
+          const avg = (arr) => arr.reduce((s, v) => s + v, 0) / arr.length;
+          const attackAvg = avg(attackPressures);
+          const otherAvg = avg(otherPressures);
+          const diff = attackAvg - otherAvg;
+
+          setWeatherState({
+            status: "done",
+            error: null,
+            result: {
+              attackAvg: attackAvg.toFixed(1),
+              otherAvg: otherAvg.toFixed(1),
+              diff: diff.toFixed(1),
+              days: Object.keys(dailyAvg).length,
+            },
+          });
+        } catch (err) {
+          setWeatherState({ status: "error", result: null, error: "Nie udało się pobrać danych pogodowych. Spróbuj ponownie później." });
+        }
+      },
+      () => {
+        setWeatherState({ status: "error", result: null, error: "Musisz zezwolić na dostęp do lokalizacji, żeby sprawdzić dane pogodowe." });
+      }
+    );
+  };
+
+  return (
+    <div className="flex flex-col h-full animate-fade-in">
+      <div className="px-5 pt-7 pb-4">
+        <p
+          className="text-[11px] uppercase tracking-[0.18em]"
+          style={{ color: COLORS.textMuted }}
+        >
+          Wzorce i analiza
+        </p>
+        <h1
+          className="font-serif text-[24px] mt-1"
+          style={{ color: COLORS.textPrimary }}
+        >
+          Statystyki
+        </h1>
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-5 pb-24">
+        {/* Ataki w poszczególnych miesiącach */}
+        <div
+          className="rounded-2xl p-4 border mb-5"
+          style={{ background: COLORS.surface, borderColor: COLORS.border }}
+        >
+          <p className="text-sm mb-3" style={{ color: COLORS.textPrimary }}>
+            Ataki w poszczególnych miesiącach
+          </p>
+          <div className="flex flex-col gap-3">
+            {monthlyCounts.list.map((m) => (
+              <div key={m.key}>
+                <div className="flex items-center justify-between mb-1">
+                  <span
+                    className="text-[13px] capitalize"
+                    style={{ color: COLORS.textPrimary }}
+                  >
+                    {m.label}
+                  </span>
+                  <span
+                    className="text-[12px]"
+                    style={{ color: COLORS.textSecondary }}
+                  >
+                    {m.count} {plAtak(m.count)}
+                  </span>
+                </div>
+                <div
+                  className="w-full h-2 rounded-full overflow-hidden"
+                  style={{ background: COLORS.surface2 }}
+                >
+                  <div
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{
+                      width: `${(m.count / monthlyCounts.max) * 100}%`,
+                      background: "#7c8a8a",
+                      opacity: 0.85,
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
+            {monthlyCounts.list.length === 0 && (
+              <p className="text-[13px]" style={{ color: COLORS.textSecondary }}>
+                Brak danych do pokazania.
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Ból w czasie */}
+        <div
+          className="rounded-2xl p-4 border mb-5"
+          style={{ background: COLORS.surface, borderColor: COLORS.border }}
+        >
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm" style={{ color: COLORS.textPrimary }}>
+              Intensywność bólu w czasie
+            </p>
+            <span
+              className="text-[11px]"
+              style={{ color: COLORS.textSecondary }}
+            >
+              śr. {avgPain}
+            </span>
+          </div>
+          <div style={{ width: "100%", height: 160 }}>
+            <ResponsiveContainer>
+              <LineChart data={chartData} margin={{ left: -20, right: 8, top: 8 }}>
+                <CartesianGrid stroke={COLORS.border} strokeDasharray="3 3" vertical={false} />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fill: COLORS.textMuted, fontSize: 10 }}
+                  axisLine={{ stroke: COLORS.border }}
+                  tickLine={false}
+                />
+                <YAxis
+                  domain={[0, 10]}
+                  tick={{ fill: COLORS.textMuted, fontSize: 10 }}
+                  axisLine={false}
+                  tickLine={false}
+                  width={24}
+                />
+                <Tooltip
+                  contentStyle={{
+                    background: COLORS.surface2,
+                    border: `1px solid ${COLORS.border}`,
+                    borderRadius: 10,
+                    fontSize: 12,
+                    color: COLORS.textPrimary,
+                  }}
+                  labelStyle={{ color: COLORS.textSecondary }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="Ból"
+                  stroke={COLORS.accent}
+                  strokeWidth={2}
+                  dot={{ r: 3, fill: COLORS.accent, strokeWidth: 0 }}
+                  activeDot={{ r: 5 }}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        {/* Najczęstsze triggery */}
+        <div
+          className="rounded-2xl p-4 border"
+          style={{ background: COLORS.surface, borderColor: COLORS.border }}
+        >
+          <p className="text-sm mb-3" style={{ color: COLORS.textPrimary }}>
+            Najczęstsze wyzwalacze
+          </p>
+          <div className="flex flex-col gap-3">
+            {triggerCounts
+              .sort((a, b) => b.count - a.count)
+              .map((t) => (
+                <div key={t.id}>
+                  <div className="flex items-center justify-between mb-1">
+                    <div className="flex items-center gap-2">
+                      <t.icon size={14} style={{ color: COLORS.textSecondary }} />
+                      <span
+                        className="text-[13px]"
+                        style={{ color: COLORS.textPrimary }}
+                      >
+                        {t.label}
+                      </span>
+                    </div>
+                    <span
+                      className="text-[12px]"
+                      style={{ color: COLORS.textSecondary }}
+                    >
+                      {t.count}×
+                    </span>
+                  </div>
+                  <div
+                    className="w-full h-2 rounded-full overflow-hidden"
+                    style={{ background: COLORS.surface2 }}
+                  >
+                    <div
+                      className="h-full rounded-full transition-all duration-500"
+                      style={{
+                        width: `${(t.count / t.max) * 100}%`,
+                        background: COLORS.accent,
+                        opacity: 0.75,
+                      }}
+                    />
+                  </div>
+                </div>
+              ))}
+          </div>
+        </div>
+
+        {/* Podsumowanie liczbowe */}
+        <div className="grid grid-cols-2 gap-3 mt-5">
+          <div
+            className="rounded-2xl p-4 border"
+            style={{ background: COLORS.surface, borderColor: COLORS.border }}
+          >
+            <Calendar size={16} style={{ color: COLORS.textSecondary }} />
+            <p
+              className="font-serif text-2xl mt-2"
+              style={{ color: COLORS.textPrimary }}
+            >
+              {entries.filter((e) => !e.continuesPrevious).length}
+            </p>
+            <p className="text-[11px]" style={{ color: COLORS.textSecondary }}>
+              odrębnych ataków
+            </p>
+          </div>
+          <div
+            className="rounded-2xl p-4 border"
+            style={{ background: COLORS.surface, borderColor: COLORS.border }}
+          >
+            <BarChart3 size={16} style={{ color: COLORS.textSecondary }} />
+            <p
+              className="font-serif text-2xl mt-2"
+              style={{ color: COLORS.textPrimary }}
+            >
+              {entries.length
+                ? Math.max(...entries.map((e) => e.pain))
+                : "—"}
+            </p>
+            <p className="text-[11px]" style={{ color: COLORS.textSecondary }}>
+              najwyższy ból
+            </p>
+          </div>
+        </div>
+
+        {/* Kopia zapasowa i raport */}
+        <div
+          className="rounded-2xl p-4 border mt-5"
+          style={{ background: COLORS.surface, borderColor: COLORS.border }}
+        >
+          <p className="text-sm mb-1" style={{ color: COLORS.textPrimary }}>
+            Kopia zapasowa i raport
+          </p>
+          <p className="text-[11px] mb-3" style={{ color: COLORS.textSecondary }}>
+            Dane są zapisane tylko na tym urządzeniu — eksportuj plik, żeby ich nie stracić.
+          </p>
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={onExportData}
+              className="flex items-center justify-center gap-2 rounded-xl py-3 text-sm"
+              style={{ background: COLORS.surface2, color: COLORS.textPrimary }}
+            >
+              <Download size={15} style={{ color: COLORS.textSecondary }} />
+              Eksportuj dane (kopia zapasowa)
+            </button>
+            <button
+              onClick={() => fileInputRef.current && fileInputRef.current.click()}
+              className="flex items-center justify-center gap-2 rounded-xl py-3 text-sm"
+              style={{ background: COLORS.surface2, color: COLORS.textPrimary }}
+            >
+              <Upload size={15} style={{ color: COLORS.textSecondary }} />
+              Importuj dane z pliku
+            </button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="application/json"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files && e.target.files[0];
+                if (file) onImportData(file);
+                e.target.value = "";
+              }}
+            />
+            <div>
+              <p className="text-[11px] mb-1.5" style={{ color: COLORS.textSecondary }}>
+                Imię i nazwisko (opcjonalnie, pojawi się w raporcie)
+              </p>
+              <input
+                defaultValue={patientName}
+                onBlur={(e) => onChangeName(e.target.value)}
+                placeholder="np. Anna Kowalska"
+                className="w-full rounded-xl px-3 py-2.5 text-sm border bg-transparent outline-none placeholder:opacity-60"
+                style={{ borderColor: COLORS.border, color: COLORS.textPrimary }}
+              />
+            </div>
+            <button
+              onClick={onExportReport}
+              className="flex items-center justify-center gap-2 rounded-xl py-3 text-sm"
+              style={{ background: COLORS.accentSoft, color: COLORS.textPrimary }}
+            >
+              <FileText size={15} style={{ color: COLORS.accent }} />
+              Eksportuj podsumowanie dla lekarza
+            </button>
+          </div>
+        </div>
+
+        {/* Test MIDAS */}
+        <div
+          className="rounded-2xl p-4 border mt-5"
+          style={{ background: COLORS.surface, borderColor: COLORS.border }}
+        >
+          <button
+            onClick={() => setShowMidas((v) => !v)}
+            className="w-full flex items-center justify-between text-left"
+          >
+            <div>
+              <p className="text-sm" style={{ color: COLORS.textPrimary }}>Test MIDAS</p>
+              <p className="text-[11px] mt-0.5" style={{ color: COLORS.textSecondary }}>
+                Kwestionariusz wpływu migreny na codzienne funkcjonowanie
+              </p>
+            </div>
+            <ChevronLeft
+              size={16}
+              style={{ color: COLORS.textMuted, transform: showMidas ? "rotate(90deg)" : "rotate(-90deg)" }}
+            />
+          </button>
+
+          {showMidas && (
+            <div className="mt-4 flex flex-col gap-3 animate-fade-in">
+              {[
+                "Ile dni w ciągu ostatnich 3 miesięcy opuściłaś/eś pracę, szkołę lub studia z powodu bólu głowy?",
+                "Ile dni Twoja wydajność w pracy/szkole była zmniejszona o połowę lub więcej (nie licząc dni z pytania 1)?",
+                "Ile dni nie wykonywałaś/eś prac domowych z powodu bólu głowy?",
+                "Ile dni Twoja wydajność w pracach domowych była zmniejszona o połowę lub więcej (nie licząc dni z pytania 3)?",
+                "Ile dni opuściłaś/eś wydarzenia rodzinne, towarzyskie lub rekreacyjne z powodu bólu głowy?",
+              ].map((q, i) => (
+                <div key={i}>
+                  <p className="text-[12px] mb-1.5" style={{ color: COLORS.textSecondary }}>{q}</p>
+                  <input
+                    type="number"
+                    min="0"
+                    max="90"
+                    value={midasAnswers[i]}
+                    onChange={(e) => {
+                      const next = [...midasAnswers];
+                      next[i] = e.target.value.replace(/[^0-9]/g, "");
+                      setMidasAnswers(next);
+                    }}
+                    placeholder="0"
+                    className="w-20 rounded-lg px-3 py-2 text-sm border bg-transparent outline-none"
+                    style={{ borderColor: COLORS.border, color: COLORS.textPrimary }}
+                  />
+                </div>
+              ))}
+              {midasHasAnswers && (
+                <div
+                  className="rounded-xl p-3 mt-1"
+                  style={{ background: COLORS.surface2 }}
+                >
+                  <p className="text-[13px]" style={{ color: COLORS.textPrimary }}>
+                    Wynik: {midasTotal} dni
+                  </p>
+                  <p className="text-[12px] mt-0.5" style={{ color: COLORS.accent }}>
+                    {midasGrade}
+                  </p>
+                </div>
+              )}
+              <p className="text-[10px] mt-1" style={{ color: COLORS.textMuted }}>
+                To narzędzie pomocnicze do rozmowy z lekarzem, nie zastępuje diagnozy.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Pogoda i ciśnienie */}
+        <div
+          className="rounded-2xl p-4 border mt-5"
+          style={{ background: COLORS.surface, borderColor: COLORS.border }}
+        >
+          <p className="text-sm mb-1" style={{ color: COLORS.textPrimary }}>Pogoda i ciśnienie</p>
+          <p className="text-[11px] mb-3" style={{ color: COLORS.textSecondary }}>
+            Porównuje ciśnienie atmosferyczne w dni ataków z resztą ostatnich 90 dni. Wymaga zgody na lokalizację.
+          </p>
+          {weatherState.status !== "done" && (
+            <button
+              onClick={checkWeatherCorrelation}
+              disabled={weatherState.status === "loading"}
+              className="w-full rounded-xl py-3 text-sm"
+              style={{ background: COLORS.surface2, color: COLORS.textPrimary }}
+            >
+              {weatherState.status === "loading" ? "Sprawdzam…" : "Sprawdź korelację z ciśnieniem"}
+            </button>
+          )}
+          {weatherState.status === "error" && (
+            <p className="text-[12px] mt-2" style={{ color: "#b3684f" }}>{weatherState.error}</p>
+          )}
+          {weatherState.status === "done" && weatherState.result && (
+            <div className="rounded-xl p-3" style={{ background: COLORS.surface2 }}>
+              <p className="text-[13px]" style={{ color: COLORS.textPrimary }}>
+                Średnie ciśnienie w dni ataków: {weatherState.result.attackAvg} hPa
+              </p>
+              <p className="text-[13px] mt-1" style={{ color: COLORS.textPrimary }}>
+                Średnie ciśnienie w pozostałe dni: {weatherState.result.otherAvg} hPa
+              </p>
+              <p className="text-[12px] mt-2" style={{ color: COLORS.accent }}>
+                Różnica: {weatherState.result.diff > 0 ? "+" : ""}{weatherState.result.diff} hPa
+                {Math.abs(weatherState.result.diff) < 1
+                  ? " — brak wyraźnej różnicy"
+                  : weatherState.result.diff < 0
+                  ? " — dni ataków miały niższe ciśnienie"
+                  : " — dni ataków miały wyższe ciśnienie"}
+              </p>
+              <p className="text-[10px] mt-2" style={{ color: COLORS.textMuted }}>
+                To prosta obserwacja statystyczna z {weatherState.result.days} dni, nie dowód przyczynowości.
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* O aplikacji */}
+        <div
+          className="rounded-2xl p-4 border mt-5 mb-2"
+          style={{ background: COLORS.surface, borderColor: COLORS.border }}
+        >
+          <p className="text-sm mb-2" style={{ color: COLORS.textPrimary }}>O aplikacji</p>
+          <p className="text-[12px] leading-relaxed" style={{ color: COLORS.textSecondary }}>
+            Migrenownik jest narzędziem do prowadzenia własnych notatek dotyczących migreny.
+            Nie jest wyrobem medycznym, nie stawia diagnoz i nie zastępuje konsultacji z lekarzem.
+          </p>
+          <p className="text-[12px] leading-relaxed mt-2" style={{ color: COLORS.textSecondary }}>
+            Wersja testowa (Beta). Aplikacja jest rozwijana i może zawierać błędy.
+          </p>
+          <p className="text-[12px] leading-relaxed mt-2" style={{ color: COLORS.textSecondary }}>
+            Masz pomysł lub znalazłaś/eś błąd? Napisz na{" "}
+            <a
+              href="mailto:feedback@panimigrena.pl"
+              className="underline"
+              style={{ color: COLORS.accent }}
+            >
+              feedback@panimigrena.pl
+            </a>
+            .
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------
+   NAWIGACJA DOLNA
+--------------------------------------------------------- */
+function TabBar({ screen, setScreen }) {
+  const tabs = [
+    { id: "home", label: "Start", icon: Home },
+    { id: "calendar", label: "Kalendarz", icon: Calendar },
+    { id: "stats", label: "Statystyki", icon: BarChart3 },
+  ];
+  return (
+    <div
+      className="absolute bottom-0 left-0 right-0 flex items-center justify-around py-3 border-t backdrop-blur-sm"
+      style={{ background: `${COLORS.bg}f2`, borderColor: COLORS.border }}
+    >
+      {tabs.map((t) => {
+        const active = screen === t.id;
+        return (
+          <button
+            key={t.id}
+            onClick={() => setScreen(t.id)}
+            className="flex flex-col items-center gap-1 px-6 py-1"
+          >
+            <t.icon
+              size={19}
+              strokeWidth={active ? 2 : 1.5}
+              style={{ color: active ? COLORS.accent : COLORS.textMuted }}
+            />
+            <span
+              className="text-[10px] tracking-wide"
+              style={{ color: active ? COLORS.accent : COLORS.textMuted }}
+            >
+              {t.label}
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------
+   APLIKACJA
+--------------------------------------------------------- */
+const STORAGE_KEY = "dziennik-migren:entries";
+const STORAGE_KEY_PERIOD = "dziennik-migren:period-days";
+const STORAGE_KEY_NAME = "dziennik-migren:patient-name";
+const STORAGE_KEY_DISCLAIMER = "dziennik-migren:disclaimer-accepted";
+
+export default function App() {
+  const [screen, setScreen] = useState("home"); // 'home' | 'form' | 'stats' | 'calendar'
+  const [entries, setEntries] = useState([]);
+  const [periodDays, setPeriodDays] = useState([]);
+  const [patientName, setPatientName] = useState("");
+  const [disclaimerAccepted, setDisclaimerAccepted] = useState(true);
+  const [onboardingStep, setOnboardingStep] = useState(1);
+  const [loaded, setLoaded] = useState(false);
+  const [editingEntry, setEditingEntry] = useState(null);
+
+  // Wczytaj zapisane wpisy i dni miesiączki przy starcie
+  React.useEffect(() => {
+    (async () => {
+      try {
+        const result = await window.storage.get(STORAGE_KEY);
+        const parsed = result ? JSON.parse(result.value) : null;
+        setEntries(parsed || []);
+      } catch (e) {
+        setEntries([]);
+      }
+      try {
+        const periodResult = await window.storage.get(STORAGE_KEY_PERIOD);
+        const parsedPeriod = periodResult ? JSON.parse(periodResult.value) : null;
+        setPeriodDays(parsedPeriod || []);
+      } catch (e) {
+        setPeriodDays([]);
+      }
+      try {
+        const nameResult = await window.storage.get(STORAGE_KEY_NAME);
+        setPatientName(nameResult ? nameResult.value : "");
+      } catch (e) {
+        setPatientName("");
+      }
+      try {
+        const disclaimerResult = await window.storage.get(STORAGE_KEY_DISCLAIMER);
+        setDisclaimerAccepted(disclaimerResult ? disclaimerResult.value === "true" : false);
+      } catch (e) {
+        setDisclaimerAccepted(false);
+      } finally {
+        setLoaded(true);
+      }
+    })();
+  }, []);
+
+  // Zapisuj do trwałej pamięci przy każdej zmianie (po wczytaniu startowym)
+  React.useEffect(() => {
+    if (!loaded) return;
+    window.storage
+      .set(STORAGE_KEY, JSON.stringify(entries), false)
+      .catch(() => {});
+  }, [entries, loaded]);
+
+  React.useEffect(() => {
+    if (!loaded) return;
+    window.storage
+      .set(STORAGE_KEY_PERIOD, JSON.stringify(periodDays), false)
+      .catch(() => {});
+  }, [periodDays, loaded]);
+
+  React.useEffect(() => {
+    if (!loaded) return;
+    window.storage.set(STORAGE_KEY_NAME, patientName, false).catch(() => {});
+  }, [patientName, loaded]);
+
+  const acceptDisclaimer = () => {
+    setDisclaimerAccepted(true);
+    window.storage.set(STORAGE_KEY_DISCLAIMER, "true", false).catch(() => {});
+  };
+
+  const togglePeriodDay = (key) => {
+    setPeriodDays((prev) =>
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
+    );
+  };
+
+  const handleSave = (entry) => {
+    setEntries((prev) => {
+      const exists = prev.some((e) => e.id === entry.id);
+      return exists
+        ? prev.map((e) => (e.id === entry.id ? entry : e))
+        : [entry, ...prev];
+    });
+    setEditingEntry(null);
+    setScreen("home");
+  };
+
+  const openNewAttack = () => {
+    setEditingEntry(null);
+    setScreen("form");
+  };
+
+  const openEditEntry = (entry) => {
+    setEditingEntry(entry);
+    setScreen("form");
+  };
+
+  const handleClearAll = () => {
+    setEntries([]);
+  };
+
+  const handleDeleteEntry = (id) => {
+    setEntries((prev) => prev.filter((e) => e.id !== id));
+    setEditingEntry(null);
+    setScreen("home");
+  };
+
+  const triggerDownload = (filename, content, mimeType) => {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleExportData = () => {
+    const payload = JSON.stringify({ entries, periodDays }, null, 2);
+    const today = dateKey(new Date());
+    triggerDownload(`dziennik-migren-kopia-${today}.json`, payload, "application/json");
+  };
+
+  const handleImportData = (file) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      try {
+        const data = JSON.parse(reader.result);
+        if (Array.isArray(data.entries)) setEntries(data.entries);
+        if (Array.isArray(data.periodDays)) setPeriodDays(data.periodDays);
+      } catch (e) {
+        alert("Nie udało się odczytać pliku. Sprawdź, czy to poprawna kopia zapasowa.");
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const handleExportReport = () => {
+    const sorted = [...entries].sort((a, b) => new Date(a.date) - new Date(b.date));
+    const uniqueAttackCount = entries.filter((e) => !e.continuesPrevious).length;
+    const avgPain = entries.length
+      ? (entries.reduce((s, e) => s + e.pain, 0) / entries.length).toFixed(1)
+      : "brak danych";
+    const triggerCounts = {};
+    const symptomCounts = {};
+    const medsSet = new Set();
+    entries.forEach((e) => {
+      e.triggers.forEach((t) => (triggerCounts[t] = (triggerCounts[t] || 0) + 1));
+      e.symptoms.forEach((s) => (symptomCounts[s] = (symptomCounts[s] || 0) + 1));
+      if (e.medication && e.medication !== "—") medsSet.add(e.medication);
+    });
+    const topList = (counts, dict) =>
+      Object.entries(counts)
+        .sort((a, b) => b[1] - a[1])
+        .map(([id, c]) => `${dict.find((x) => x.id === id)?.label || id} (${c}x)`)
+        .join(", ") || "brak";
+
+    const lines = [
+      "PODSUMOWANIE DZIENNICZKA MIGREN",
+      patientName ? `Pacjent/ka: ${patientName}` : null,
+      `Wygenerowano: ${new Date().toLocaleDateString("pl-PL")}`,
+      "",
+      `Liczba odrębnych ataków: ${uniqueAttackCount}`,
+      `Liczba zapisanych dni z objawami: ${entries.length}`,
+      sorted.length ? `Okres: ${fmtDate(sorted[0].date)} – ${fmtDate(sorted[sorted.length - 1].date)}` : null,
+      `Średnia intensywność bólu: ${avgPain} / 10`,
+      `Najsilniejszy zanotowany ból: ${entries.length ? Math.max(...entries.map((e) => e.pain)) : "—"} / 10`,
+      "",
+      `Najczęstsze wyzwalacze: ${topList(triggerCounts, TRIGGERS)}`,
+      `Najczęstsze objawy: ${topList(symptomCounts, SYMPTOMS)}`,
+      `Stosowane leki: ${medsSet.size ? [...medsSet].join(", ") : "brak"}`,
+      `Dni miesiączki w historii: ${periodDays.length}`,
+      "",
+      "SZCZEGÓŁOWA HISTORIA ATAKÓW:",
+      ...sorted.map((e) => {
+        const parts = [
+          fmtDate(e.date),
+          e.continuesPrevious ? "kontynuacja poprzedniego ataku" : null,
+          `ból ${e.pain}/10 (${painLabel(e.pain)})`,
+          e.symptoms.length ? `objawy: ${e.symptoms.map((s) => SYMPTOMS.find((x) => x.id === s)?.label).join(", ")}` : null,
+          e.triggers.length ? `wyzwalacze: ${e.triggers.map((t) => TRIGGERS.find((x) => x.id === t)?.label).join(", ")}` : null,
+          e.medication && e.medication !== "—" ? `lek: ${e.medication}` : null,
+          e.note ? `notatka: ${e.note}` : null,
+        ].filter(Boolean);
+        return "- " + parts.join(" · ");
+      }),
+    ]
+      .filter((l) => l !== null)
+      .join("\n");
+
+    const today = dateKey(new Date());
+    triggerDownload(`podsumowanie-migreny-${today}.txt`, lines, "text/plain;charset=utf-8");
+  };
+
+  if (!loaded) {
+    return (
+      <div
+        className="w-full min-h-screen flex items-center justify-center"
+        style={{ background: "#0c0c0e", color: COLORS.textSecondary }}
+      >
+        <span className="text-sm">Wczytywanie…</span>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="w-full min-h-screen flex items-center justify-center py-6"
+      style={{ background: "#0c0c0e" }}
+    >
+      <style>{`
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px);} to { opacity: 1; transform: translateY(0);} }
+        @keyframes slideIn { from { opacity: 0; transform: translateX(16px);} to { opacity: 1; transform: translateX(0);} }
+        .animate-fade-in { animation: fadeIn 0.35s ease-out; }
+        .animate-slide-in { animation: slideIn 0.3s ease-out; }
+        input[type="range"] {
+          -webkit-appearance: none;
+          height: 4px;
+          border-radius: 999px;
+          background: ${COLORS.surface2};
+        }
+        input[type="range"]::-webkit-slider-thumb {
+          -webkit-appearance: none;
+          width: 18px;
+          height: 18px;
+          border-radius: 50%;
+          background: currentColor;
+          border: 3px solid ${COLORS.bg};
+          box-shadow: 0 0 0 1px ${COLORS.border};
+          cursor: pointer;
+        }
+        .phone-shell { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
+        .font-serif { font-family: 'Georgia', 'Iowan Old Style', ui-serif, serif; }
+      `}</style>
+
+      {/* Ramka telefonu */}
+      <div
+        className="phone-shell relative w-full max-w-[390px] h-[780px] rounded-[2.5rem] overflow-hidden border shadow-2xl"
+        style={{
+          background: COLORS.bg,
+          borderColor: "#000",
+          boxShadow: "0 0 0 8px #050506, 0 20px 60px rgba(0,0,0,0.6)",
+        }}
+      >
+        {/* notch */}
+        <div className="absolute top-0 left-0 right-0 h-7 flex justify-center z-20">
+          <div className="w-28 h-5 bg-black rounded-b-2xl" />
+        </div>
+
+        <div className="relative w-full h-full">
+          {!disclaimerAccepted ? (
+            onboardingStep === 1 ? (
+              <div className="flex flex-col h-full px-6 py-10 justify-between animate-fade-in">
+                <div>
+                  <div className="flex items-center gap-2 mb-6">
+                    <span
+                      className="text-[10px] tracking-wide rounded-full px-2 py-0.5"
+                      style={{ background: COLORS.surface2, color: COLORS.textSecondary, border: `1px solid ${COLORS.border}` }}
+                    >
+                      BETA
+                    </span>
+                  </div>
+                  <h1 className="font-serif text-2xl mb-1" style={{ color: COLORS.textPrimary }}>
+                    Witaj w Migrenowniku
+                  </h1>
+                  <p className="text-sm leading-relaxed mt-4" style={{ color: COLORS.textSecondary }}>
+                    Migrenownik pomaga prowadzić dziennik ataków migreny, objawów i możliwych wyzwalaczy.
+                  </p>
+
+                  <div className="flex items-start gap-3 mt-6">
+                    <Lock size={16} className="mt-0.5 flex-shrink-0" style={{ color: COLORS.accent }} />
+                    <p className="text-sm leading-relaxed" style={{ color: COLORS.textSecondary }}>
+                      Wszystkie Twoje dane pozostają wyłącznie na Twoim urządzeniu.
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-3 mt-4">
+                    <AlertTriangle size={16} className="mt-0.5 flex-shrink-0" style={{ color: "#b3684f" }} />
+                    <p className="text-sm leading-relaxed" style={{ color: COLORS.textSecondary }}>
+                      Migrenownik nie zastępuje porady lekarza i nie jest wyrobem medycznym.
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-3 mt-4">
+                    <FlaskConical size={16} className="mt-0.5 flex-shrink-0" style={{ color: COLORS.textMuted }} />
+                    <p className="text-sm leading-relaxed" style={{ color: COLORS.textSecondary }}>
+                      To wersja Beta — jeśli zauważysz błąd lub masz pomysł na nową funkcję, napisz na{" "}
+                      <a href="mailto:feedback@panimigrena.pl" className="underline" style={{ color: COLORS.accent }}>
+                        feedback@panimigrena.pl
+                      </a>
+                      .
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setOnboardingStep(2)}
+                  className="w-full rounded-2xl py-4 text-sm tracking-wide"
+                  style={{ background: COLORS.accent, color: COLORS.bg }}
+                >
+                  Dalej →
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-col h-full px-6 py-8 justify-between animate-slide-in">
+                <div className="overflow-y-auto">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Smartphone size={18} style={{ color: COLORS.accent }} />
+                    <h1 className="font-serif text-xl" style={{ color: COLORS.textPrimary }}>
+                      Korzystaj jak z aplikacji
+                    </h1>
+                  </div>
+                  <p className="text-sm leading-relaxed" style={{ color: COLORS.textSecondary }}>
+                    Dodaj Migrenownik do ekranu głównego — uruchomi się z własnej ikony i będzie działać jak zwykła aplikacja.
+                  </p>
+
+                  {/* Android */}
+                  <div
+                    className="rounded-2xl border p-4 mt-5"
+                    style={{ background: COLORS.surface, borderColor: COLORS.border }}
+                  >
+                    <p className="text-[11px] uppercase tracking-[0.18em] mb-3" style={{ color: COLORS.textMuted }}>
+                      Android · Chrome
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <div className="flex flex-col items-center gap-1.5 flex-1">
+                        <div
+                          className="w-11 h-11 rounded-xl flex items-center justify-center"
+                          style={{ background: COLORS.surface2, border: `1px solid ${COLORS.border}` }}
+                        >
+                          <MoreVertical size={18} style={{ color: COLORS.textPrimary }} />
+                        </div>
+                        <span className="text-[10px] text-center" style={{ color: COLORS.textSecondary }}>Menu (⋮)</span>
+                      </div>
+                      <span style={{ color: COLORS.textMuted }}>→</span>
+                      <div className="flex flex-col items-center gap-1.5 flex-1">
+                        <div
+                          className="w-11 h-11 rounded-xl flex items-center justify-center"
+                          style={{ background: COLORS.surface2, border: `1px solid ${COLORS.border}` }}
+                        >
+                          <Plus size={18} style={{ color: COLORS.textPrimary }} />
+                        </div>
+                        <span className="text-[10px] text-center" style={{ color: COLORS.textSecondary }}>Dodaj do ekranu głównego</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* iPhone */}
+                  <div
+                    className="rounded-2xl border p-4 mt-3"
+                    style={{ background: COLORS.surface, borderColor: COLORS.border }}
+                  >
+                    <p className="text-[11px] uppercase tracking-[0.18em] mb-3" style={{ color: COLORS.textMuted }}>
+                      iPhone · Safari
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <div className="flex flex-col items-center gap-1.5 flex-1">
+                        <div
+                          className="w-11 h-11 rounded-xl flex items-center justify-center"
+                          style={{ background: COLORS.surface2, border: `1px solid ${COLORS.border}` }}
+                        >
+                          <Share2 size={18} style={{ color: COLORS.textPrimary }} />
+                        </div>
+                        <span className="text-[10px] text-center" style={{ color: COLORS.textSecondary }}>Udostępnij</span>
+                      </div>
+                      <span style={{ color: COLORS.textMuted }}>→</span>
+                      <div className="flex flex-col items-center gap-1.5 flex-1">
+                        <div
+                          className="w-11 h-11 rounded-xl flex items-center justify-center"
+                          style={{ background: COLORS.surface2, border: `1px solid ${COLORS.border}` }}
+                        >
+                          <Plus size={18} style={{ color: COLORS.textPrimary }} />
+                        </div>
+                        <span className="text-[10px] text-center" style={{ color: COLORS.textSecondary }}>Dodaj do ekranu głównego</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <p className="text-[11px] mt-4" style={{ color: COLORS.textMuted }}>
+                    Ten krok jest opcjonalny — możesz korzystać z Migrenownika również bez instalacji.
+                  </p>
+                </div>
+                <button
+                  onClick={acceptDisclaimer}
+                  className="w-full rounded-2xl py-4 text-sm tracking-wide mt-5"
+                  style={{ background: COLORS.accent, color: COLORS.bg }}
+                >
+                  Rozpocznij korzystanie
+                </button>
+              </div>
+            )
+          ) : (
+            <>
+              {screen === "home" && (
+                <HomeScreen
+                  entries={entries}
+                  onNewAttack={openNewAttack}
+                  onOpenStats={() => setScreen("stats")}
+                  onClearAll={handleClearAll}
+                  onEditEntry={openEditEntry}
+                />
+              )}
+              {screen === "form" && (
+                <FormScreen
+                  onCancel={() => { setEditingEntry(null); setScreen("home"); }}
+                  onSave={handleSave}
+                  onDelete={handleDeleteEntry}
+                  editingEntry={editingEntry}
+                />
+              )}
+              {screen === "calendar" && (
+                <CalendarScreen
+                  entries={entries}
+                  periodDays={periodDays}
+                  onTogglePeriod={togglePeriodDay}
+                  onEditEntry={openEditEntry}
+                />
+              )}
+              {screen === "stats" && (
+                <StatsScreen
+                  entries={entries}
+                  periodDays={periodDays}
+                  onExportData={handleExportData}
+                  onImportData={handleImportData}
+                  onExportReport={handleExportReport}
+                  patientName={patientName}
+                  onChangeName={setPatientName}
+                />
+              )}
+
+              {screen !== "form" && <TabBar screen={screen} setScreen={setScreen} />}
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
