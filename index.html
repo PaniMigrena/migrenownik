@@ -34,7 +34,7 @@
         które pomagają lepiej zrozumieć własne doświadczenia.
       </p>
 
-      <a class="cta" href="./migrenownik/">
+      <a class="cta" href="./migrenownik/" id="cta-migrenownik">
         Przejdź do Migrenownika
       </a>
 
@@ -46,19 +46,26 @@
     </div>
   </main>
 
-  <!--
-    Miejsce na Google Analytics (GA4).
-    Aby włączyć, wklej swój Measurement ID (np. "G-XXXXXXXXXX") poniżej
-    i odkomentuj cały blok. Bez uzupełnionego ID nic się nie ładuje.
+  <!-- Google Analytics (GA4) -->
+  <script async src="https://www.googletagmanager.com/gtag/js?id=G-5NL42JGWJR"></script>
+  <script>
+    window.dataLayer = window.dataLayer || [];
+    function gtag(){dataLayer.push(arguments);}
+    gtag('js', new Date());
+    gtag('config', 'G-5NL42JGWJR');
+  </script>
 
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXXXXX"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-XXXXXXXXXX');
-    </script>
-  -->
+  <!-- Zdarzenie: kliknięcie CTA "Przejdź do Migrenownika" -->
+  <script>
+    document.getElementById('cta-migrenownik').addEventListener('click', function () {
+      if (typeof gtag === 'function') {
+        gtag('event', 'cta_migrenownik_click', {
+          event_category: 'engagement',
+          event_label: 'landing_to_migrenownik'
+        });
+      }
+    });
+  </script>
 
 </body>
 </html>
