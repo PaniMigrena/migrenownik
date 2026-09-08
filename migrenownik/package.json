@@ -1,0 +1,14 @@
+{
+  "name": "migrenownik-build",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Skrypt budujący app.min.js z dzienniczek_migren.jsx dla Migrenownika.",
+  "scripts": {
+    "build": "node build.js"
+  },
+  "devDependencies": {
+    "@babel/core": "^7",
+    "@babel/preset-react": "^7",
+    "terser": "^5"
+  }
+}

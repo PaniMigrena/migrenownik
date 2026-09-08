@@ -9,7 +9,7 @@
     prosty mechanizm przeglądarki, service worker zajmuje się wyłącznie plikami
 */
 
-const CACHE_VERSION = "v4";
+const CACHE_VERSION = "v5";
 const CACHE_NAME = "migrenownik-cache-" + CACHE_VERSION;
 
 // Wszystkie pliki appki są teraz lokalne (własny hosting) — bez CDN,

@@ -1,44 +1,6 @@
-import React, { useState, useMemo } from "react";
-import {
-  Plus,
-  ChevronLeft,
-  Home,
-  BarChart3,
-  Moon,
-  CloudRain,
-  Wine,
-  Zap,
-  Eye,
-  Volume2,
-  Pill,
-  Check,
-  Calendar,
-  Activity,
-  Utensils,
-  BatteryLow,
-  Trash2,
-  Droplet,
-  Download,
-  Upload,
-  FileText,
-  MapPin,
-  Clock,
-  Lock,
-  AlertTriangle,
-  FlaskConical,
-  Smartphone,
-  MoreVertical,
-  Share2,
-} from "lucide-react";
-import {
-  ResponsiveContainer,
-  LineChart,
-  Line,
-  XAxis,
-  YAxis,
-  Tooltip,
-  CartesianGrid,
-} from "recharts";
+/* Ikony (lucide-react), PainTrendChart (recharts) oraz useState/useMemo
+   są dostarczane globalnie przez icons-and-chart.raw.js, doklejany przed
+   tym plikiem przy budowaniu — patrz dev/build.js. Stąd brak tu importów. */
 
 /* ---------------------------------------------------------
    TOKENS — stonowana, ciemna paleta „aury”: bez czerwieni,
@@ -93,6 +55,9 @@ const TRIGGERS = [
   { id: "alkohol", label: "Alkohol", icon: Wine },
   { id: "dieta", label: "Dieta", icon: Utensils },
   { id: "zmeczenie", label: "Zmęczenie", icon: BatteryLow },
+  { id: "bodzce", label: "Bodźce sensoryczne", icon: Zap },
+  { id: "wysilek", label: "Wysiłek fizyczny", icon: Activity },
+  { id: "rutyna", label: "Zmiana rutyny", icon: Clock },
 ];
 
 const DURATIONS = [
@@ -127,6 +92,8 @@ const PRODROME = [
   { id: "apetyt", label: "Wzmożony apetyt", icon: Utensils },
   { id: "sztywnosc", label: "Sztywność karku", icon: Activity },
   { id: "nastroj", label: "Zmiany nastroju", icon: Zap },
+  { id: "ziewanie", label: "Nadmierne ziewanie", icon: Moon },
+  { id: "pragnienie", label: "Wzmożone pragnienie", icon: Droplet },
 ];
 
 const POSTDROME = [
@@ -138,6 +105,11 @@ const POSTDROME = [
 const fmtDate = (iso) => {
   const d = new Date(iso);
   return d.toLocaleDateString("pl-PL", { day: "2-digit", month: "short" });
+};
+
+const toDatetimeLocal = (date) => {
+  const p = (n) => String(n).padStart(2, "0");
+  return `${date.getFullYear()}-${p(date.getMonth() + 1)}-${p(date.getDate())}T${p(date.getHours())}:${p(date.getMinutes())}`;
 };
 
 const SEED = [
@@ -283,270 +255,6 @@ function PillRow({ options, value, onChange, accentColor = COLORS.accent, multi 
   );
 }
 
-/* ---------------------------------------------------------
-   EKRAN GŁÓWNY
---------------------------------------------------------- */
-function HomeScreen({ entries, onNewAttack, onOpenStats, onClearAll, onEditEntry }) {
-  const [confirmClear, setConfirmClear] = useState(false);
-  const thisMonth = useMemo(() => {
-    const now = new Date();
-    return entries.filter((e) => {
-      const d = new Date(e.date);
-      return (
-        d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
-      );
-    });
-  }, [entries]);
-
-  const monthCount = thisMonth.filter((e) => !e.continuesPrevious).length;
-  const avgPain = entries.length
-    ? (entries.reduce((s, e) => s + e.pain, 0) / entries.length).toFixed(1)
-    : "—";
-  const todayLabel = new Date().toLocaleDateString("pl-PL", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  });
-  const todayLabelCap = todayLabel.charAt(0).toUpperCase() + todayLabel.slice(1);
-
-  return (
-    <div className="flex flex-col h-full animate-fade-in">
-      <div className="px-5 pt-7 pb-4 flex items-start justify-between">
-        <div>
-          <p
-            className="text-[11px] uppercase tracking-[0.18em]"
-            style={{ color: COLORS.textMuted }}
-          >
-            {todayLabelCap}
-          </p>
-          <h1
-            className="font-serif text-[26px] mt-1 flex items-center gap-2"
-            style={{ color: COLORS.textPrimary }}
-          >
-            Dzienniczek Migren
-            <span
-              className="text-[10px] font-sans font-normal tracking-wide rounded-full px-2 py-0.5"
-              style={{ background: COLORS.surface2, color: COLORS.textSecondary, border: `1px solid ${COLORS.border}` }}
-            >
-              BETA
-            </span>
-          </h1>
-        </div>
-        {entries.length > 0 && (
-          <button
-            onClick={() => setConfirmClear(true)}
-            className="w-9 h-9 rounded-full flex items-center justify-center mt-1 flex-shrink-0"
-            style={{ background: COLORS.surface }}
-            aria-label="Wyczyść wpisy"
-          >
-            <Trash2 size={15} style={{ color: COLORS.textMuted }} />
-          </button>
-        )}
-      </div>
-
-      {confirmClear && (
-        <div className="px-5 pb-3 animate-fade-in">
-          <div
-            className="rounded-2xl p-4 border flex flex-col gap-3"
-            style={{ background: COLORS.surface, borderColor: "#b3684f55" }}
-          >
-            <p className="text-[13px]" style={{ color: COLORS.textPrimary }}>
-              Usunąć wszystkie zapisane wpisy? Tej operacji nie można cofnąć.
-            </p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => setConfirmClear(false)}
-                className="flex-1 rounded-xl py-2.5 text-sm"
-                style={{ background: COLORS.surface2, color: COLORS.textSecondary }}
-              >
-                Anuluj
-              </button>
-              <button
-                onClick={() => {
-                  onClearAll();
-                  setConfirmClear(false);
-                }}
-                className="flex-1 rounded-xl py-2.5 text-sm"
-                style={{ background: "#5c4a6b", color: COLORS.textPrimary }}
-              >
-                Usuń wszystko
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Statystyki skrócone */}
-      <div className="px-5 grid grid-cols-2 gap-3">
-        <div
-          className="rounded-2xl p-4 border"
-          style={{ background: COLORS.surface, borderColor: COLORS.border }}
-        >
-          <p
-            className="text-[11px] tracking-wide"
-            style={{ color: COLORS.textSecondary }}
-          >
-            Ataki w tym miesiącu
-          </p>
-          <p
-            className="font-serif text-3xl mt-1"
-            style={{ color: COLORS.textPrimary }}
-          >
-            {monthCount}
-          </p>
-        </div>
-        <div
-          className="rounded-2xl p-4 border"
-          style={{ background: COLORS.surface, borderColor: COLORS.border }}
-        >
-          <p
-            className="text-[11px] tracking-wide"
-            style={{ color: COLORS.textSecondary }}
-          >
-            Średni ból
-          </p>
-          <p
-            className="font-serif text-3xl mt-1"
-            style={{ color: painColor(Math.round(avgPain)) }}
-          >
-            {avgPain}
-            <span className="text-sm ml-1" style={{ color: COLORS.textMuted }}>
-              /10
-            </span>
-          </p>
-        </div>
-      </div>
-
-      {/* Przycisk zgłoszenia */}
-      <div className="px-5 mt-4">
-        <button
-          onClick={onNewAttack}
-          className="w-full rounded-2xl py-4 flex items-center justify-center gap-2 transition-transform active:scale-[0.98]"
-          style={{
-            background: COLORS.accentSoft,
-            border: `1px solid ${COLORS.accent}55`,
-          }}
-        >
-          <Plus size={18} style={{ color: COLORS.accent }} strokeWidth={2} />
-          <span
-            className="text-sm tracking-wide"
-            style={{ color: COLORS.textPrimary }}
-          >
-            Zgłoś nowy atak
-          </span>
-        </button>
-      </div>
-
-      {/* Historia */}
-      <div className="px-5 mt-6 flex-1 overflow-y-auto pb-24">
-        <p
-          className="text-[11px] uppercase tracking-[0.18em] mb-3"
-          style={{ color: COLORS.textMuted }}
-        >
-          Ostatnie wpisy
-        </p>
-        <div className="flex flex-col gap-2.5">
-          {entries.map((e) => (
-            <button
-              key={e.id}
-              onClick={() => onEditEntry(e)}
-              className="rounded-2xl p-3.5 border flex items-center gap-3 text-left w-full transition-colors active:scale-[0.99]"
-              style={{ background: COLORS.surface, borderColor: COLORS.border }}
-            >
-              <div
-                className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
-                style={{
-                  background: `${painColor(e.pain)}22`,
-                  border: `1px solid ${painColor(e.pain)}66`,
-                }}
-              >
-                <span
-                  className="font-serif text-sm"
-                  style={{ color: painColor(e.pain) }}
-                >
-                  {e.pain}
-                </span>
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center justify-between">
-                  <span
-                    className="text-sm flex items-center gap-1.5"
-                    style={{ color: COLORS.textPrimary }}
-                  >
-                    {fmtDate(e.date)}
-                    {e.continuesPrevious && (
-                      <span
-                        className="text-[9px] uppercase tracking-wide rounded-full px-1.5 py-0.5"
-                        style={{ background: COLORS.surface2, color: COLORS.textMuted, border: `1px solid ${COLORS.border}` }}
-                      >
-                        kontynuacja
-                      </span>
-                    )}
-                  </span>
-                  <span
-                    className="text-[11px]"
-                    style={{ color: painColor(e.pain) }}
-                  >
-                    {painLabel(e.pain)}
-                  </span>
-                </div>
-                <p
-                  className="text-[12px] mt-0.5 truncate"
-                  style={{ color: COLORS.textSecondary }}
-                >
-                  {e.symptoms.length
-                    ? e.symptoms
-                        .map((s) => SYMPTOMS.find((x) => x.id === s)?.label)
-                        .join(" · ")
-                    : "Brak zanotowanych objawów"}
-                </p>
-                {(locationLabels(e.location) || e.duration) && (
-                  <p
-                    className="text-[11px] mt-0.5 truncate"
-                    style={{ color: COLORS.textMuted }}
-                  >
-                    {[
-                      e.location ? locationLabels(e.location) : null,
-                      e.duration ? DURATIONS.find((x) => x.id === e.duration)?.label : null,
-                    ]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </p>
-                )}
-                {e.dietNote && (
-                  <p
-                    className="text-[11px] mt-0.5 truncate italic"
-                    style={{ color: COLORS.textMuted }}
-                  >
-                    Dieta: {e.dietNote}
-                  </p>
-                )}
-                {e.note && (
-                  <p
-                    className="text-[11px] mt-0.5 truncate italic"
-                    style={{ color: COLORS.textMuted }}
-                  >
-                    {e.note}
-                  </p>
-                )}
-              </div>
-            </button>
-          ))}
-          {entries.length === 0 && (
-            <div
-              className="rounded-2xl p-6 text-center border"
-              style={{ background: COLORS.surface, borderColor: COLORS.border }}
-            >
-              <p className="text-sm" style={{ color: COLORS.textSecondary }}>
-                Brak wpisów. Dodaj pierwszy atak, aby zacząć śledzić wzorce.
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
 
 /* ---------------------------------------------------------
    EKRAN FORMULARZA
@@ -576,14 +284,21 @@ function FormScreen({ onCancel, onSave, onDelete, editingEntry }) {
   const medicationRef = React.useRef(null);
   const dietNoteRef = React.useRef(null);
   const noteRef = React.useRef(null);
+  const dateTimeRef = React.useRef(null);
 
   const toggle = (arr, setArr, id) =>
     setArr(arr.includes(id) ? arr.filter((x) => x !== id) : [...arr, id]);
 
   const handleSave = () => {
+    const chosenDate =
+      dateTimeRef.current && dateTimeRef.current.value
+        ? new Date(dateTimeRef.current.value).toISOString()
+        : isEditing
+        ? editingEntry.date
+        : new Date().toISOString();
     onSave({
       id: isEditing ? editingEntry.id : Date.now(),
-      date: isEditing ? editingEntry.date : new Date().toISOString(),
+      date: chosenDate,
       pain,
       symptoms,
       triggers,
@@ -666,6 +381,30 @@ function FormScreen({ onCancel, onSave, onDelete, editingEntry }) {
       )}
 
       <div className="flex-1 overflow-y-auto px-5 pt-5 pb-28">
+        {/* Data i godzina ataku */}
+        <div className="mb-5">
+          <p
+            className="text-[11px] uppercase tracking-[0.18em] mb-2 flex items-center gap-1.5"
+            style={{ color: COLORS.textMuted }}
+          >
+            <Clock size={12} />
+            Data i godzina ataku
+          </p>
+          <input
+            ref={dateTimeRef}
+            type="datetime-local"
+            defaultValue={toDatetimeLocal(isEditing ? new Date(editingEntry.date) : new Date())}
+            max={toDatetimeLocal(new Date())}
+            className="w-full rounded-2xl px-4 py-3 border bg-transparent outline-none text-sm"
+            style={{
+              background: COLORS.surface,
+              borderColor: COLORS.border,
+              color: COLORS.textPrimary,
+              colorScheme: "dark",
+            }}
+          />
+        </div>
+
         {/* Kontynuacja poprzedniego ataku */}
         <button
           onClick={() => setContinuesPrevious((v) => !v)}
@@ -930,6 +669,266 @@ function FormScreen({ onCancel, onSave, onDelete, editingEntry }) {
 }
 
 /* ---------------------------------------------------------
+   CHECK-IN DNIA — lekki, niezależny od zgłoszenia ataku wpis
+   dzienny (sen, posiłki, nawodnienie, stres, notatki), jeden
+   na dobę, klucz w localStorage: dziennik-migren:checkins.
+--------------------------------------------------------- */
+const STRESS_LABELS = ["Bardzo niski", "Niski", "Umiarkowany", "Wysoki", "Bardzo wysoki"];
+const stressColor = (v) => {
+  if (v <= 1) return "#6b9080";
+  if (v <= 2) return "#8a9a6b";
+  if (v <= 3) return "#a68a64";
+  if (v <= 4) return "#b3684f";
+  return "#5c4a6b";
+};
+
+function CheckinForm({ onCancel, onSave, onDelete, editingCheckin, dateKeyStr }) {
+  const isEditing = !!editingCheckin;
+  const [sleepHours, setSleepHours] = useState(isEditing ? editingCheckin.sleepHours : 7);
+  const [mealsRegular, setMealsRegular] = useState(isEditing ? editingCheckin.mealsRegular : true);
+  const [hydration, setHydration] = useState(isEditing ? editingCheckin.hydration : 6);
+  const [stress, setStress] = useState(isEditing ? editingCheckin.stress : 3);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const notesRef = React.useRef(null);
+
+  const handleSave = () => {
+    onSave(dateKeyStr, {
+      sleepHours,
+      mealsRegular,
+      hydration,
+      stress,
+      notes: notesRef.current ? notesRef.current.value.trim() : "",
+      updatedAt: new Date().toISOString(),
+    });
+  };
+
+  const dayLabel = new Date(dateKeyStr + "T00:00:00").toLocaleDateString("pl-PL", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+  const dayLabelCap = dayLabel.charAt(0).toUpperCase() + dayLabel.slice(1);
+
+  return (
+    <div className="flex flex-col h-full animate-slide-in">
+      <div
+        className="px-4 pt-6 pb-3 flex items-center gap-2 border-b"
+        style={{ borderColor: COLORS.border }}
+      >
+        <button
+          onClick={onCancel}
+          className="w-9 h-9 rounded-full flex items-center justify-center"
+          style={{ background: COLORS.surface }}
+        >
+          <ChevronLeft size={18} style={{ color: COLORS.textSecondary }} />
+        </button>
+        <div className="flex-1">
+          <h2 className="font-serif text-lg" style={{ color: COLORS.textPrimary }}>
+            Check-in dnia
+          </h2>
+          <p className="text-[11px]" style={{ color: COLORS.textMuted }}>{dayLabelCap}</p>
+        </div>
+        {isEditing && (
+          <button
+            onClick={() => setConfirmDelete(true)}
+            className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+            style={{ background: COLORS.surface }}
+            aria-label="Usuń check-in"
+          >
+            <Trash2 size={15} style={{ color: COLORS.textMuted }} />
+          </button>
+        )}
+      </div>
+
+      {confirmDelete && (
+        <div className="px-5 pt-3 animate-fade-in">
+          <div
+            className="rounded-2xl p-4 border flex flex-col gap-3"
+            style={{ background: COLORS.surface, borderColor: "#b3684f55" }}
+          >
+            <p className="text-[13px]" style={{ color: COLORS.textPrimary }}>
+              Usunąć check-in tego dnia? Tej operacji nie można cofnąć.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setConfirmDelete(false)}
+                className="flex-1 rounded-xl py-2.5 text-sm"
+                style={{ background: COLORS.surface2, color: COLORS.textSecondary }}
+              >
+                Anuluj
+              </button>
+              <button
+                onClick={() => onDelete(dateKeyStr)}
+                className="flex-1 rounded-xl py-2.5 text-sm"
+                style={{ background: "#5c4a6b", color: COLORS.textPrimary }}
+              >
+                Usuń check-in
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="flex-1 overflow-y-auto px-5 pt-5 pb-28">
+        {/* Sen */}
+        <div className="mb-6">
+          <p
+            className="text-[11px] uppercase tracking-[0.18em] mb-3 flex items-center gap-1.5"
+            style={{ color: COLORS.textMuted }}
+          >
+            <Moon size={12} />
+            Sen
+          </p>
+          <p className="text-center font-serif text-2xl" style={{ color: COLORS.textPrimary }}>
+            {sleepHours}
+            <span className="text-sm font-sans ml-1" style={{ color: COLORS.textMuted }}>
+              h
+            </span>
+          </p>
+          <input
+            type="range"
+            min={0}
+            max={12}
+            step={0.5}
+            value={sleepHours}
+            onChange={(e) => setSleepHours(Number(e.target.value))}
+            className="w-full mt-3"
+            style={{ accentColor: COLORS.accent }}
+          />
+          <div className="flex justify-between text-[10px] mt-1" style={{ color: COLORS.textMuted }}>
+            <span>0 h</span>
+            <span>12 h</span>
+          </div>
+        </div>
+
+        {/* Posiłki */}
+        <button
+          onClick={() => setMealsRegular((v) => !v)}
+          className="w-full flex items-center gap-3 rounded-2xl p-3.5 border mb-6 text-left transition-all"
+          style={{ background: COLORS.surface, borderColor: COLORS.border }}
+        >
+          <Utensils size={16} style={{ color: COLORS.textMuted, flexShrink: 0 }} />
+          <div className="flex-1">
+            <p className="text-[13px]" style={{ color: COLORS.textPrimary }}>
+              Posiłki o regularnych porach
+            </p>
+            <p className="text-[11px] mt-0.5" style={{ color: COLORS.textMuted }}>
+              Bez przerw dłuższych niż 4–5 h
+            </p>
+          </div>
+          <div
+            className="w-9 h-5 rounded-full flex-shrink-0 relative transition-all"
+            style={{ background: mealsRegular ? COLORS.accent : COLORS.surface2 }}
+          >
+            <span
+              className="absolute top-0.5 w-4 h-4 rounded-full transition-all"
+              style={{ background: COLORS.bg, left: mealsRegular ? "18px" : "2px" }}
+            />
+          </div>
+        </button>
+
+        {/* Nawodnienie */}
+        <div className="mb-6">
+          <p
+            className="text-[11px] uppercase tracking-[0.18em] mb-3 flex items-center gap-1.5"
+            style={{ color: COLORS.textMuted }}
+          >
+            <Droplet size={12} />
+            Nawodnienie
+          </p>
+          <p className="text-center font-serif text-2xl" style={{ color: COLORS.textPrimary }}>
+            {hydration}
+            <span className="text-sm font-sans ml-1" style={{ color: COLORS.textMuted }}>
+              szklanek
+            </span>
+          </p>
+          <input
+            type="range"
+            min={0}
+            max={12}
+            value={hydration}
+            onChange={(e) => setHydration(Number(e.target.value))}
+            className="w-full mt-3"
+            style={{ accentColor: COLORS.accent }}
+          />
+          <div className="flex justify-between text-[10px] mt-1" style={{ color: COLORS.textMuted }}>
+            <span>0</span>
+            <span>12+</span>
+          </div>
+        </div>
+
+        {/* Stres */}
+        <div className="mb-6">
+          <p
+            className="text-[11px] uppercase tracking-[0.18em] mb-3 flex items-center gap-1.5"
+            style={{ color: COLORS.textMuted }}
+          >
+            <Activity size={12} />
+            Poziom stresu
+          </p>
+          <p className="text-center text-sm" style={{ color: stressColor(stress) }}>
+            {STRESS_LABELS[stress - 1]}
+          </p>
+          <input
+            type="range"
+            min={1}
+            max={5}
+            value={stress}
+            onChange={(e) => setStress(Number(e.target.value))}
+            className="w-full mt-3"
+            style={{ accentColor: stressColor(stress) }}
+          />
+          <div className="flex justify-between text-[10px] mt-1" style={{ color: COLORS.textMuted }}>
+            <span>1 · niski</span>
+            <span>5 · bardzo wysoki</span>
+          </div>
+        </div>
+
+        {/* Notatki */}
+        <div className="mb-6">
+          <p
+            className="text-[11px] uppercase tracking-[0.18em] mb-3"
+            style={{ color: COLORS.textMuted }}
+          >
+            Notatki (opcjonalnie)
+          </p>
+          <textarea
+            ref={notesRef}
+            defaultValue={isEditing ? editingCheckin.notes || "" : ""}
+            placeholder="np. nietypowe zmęczenie, pominięty posiłek, stresujący dzień w pracy…"
+            rows={3}
+            className="w-full rounded-2xl px-4 py-3 border bg-transparent outline-none text-sm resize-none placeholder:opacity-60"
+            style={{
+              background: COLORS.surface,
+              borderColor: COLORS.border,
+              color: COLORS.textPrimary,
+            }}
+          />
+        </div>
+      </div>
+
+      <div
+        className="absolute bottom-0 left-0 right-0 px-5 pb-6 pt-4"
+        style={{
+          background: `linear-gradient(to top, ${COLORS.bg} 60%, transparent)`,
+        }}
+      >
+        <button
+          onClick={handleSave}
+          className="w-full rounded-2xl py-4 flex items-center justify-center gap-2 transition-transform active:scale-[0.98]"
+          style={{ background: COLORS.accent }}
+        >
+          <Check size={18} style={{ color: COLORS.bg }} strokeWidth={2.2} />
+          <span className="text-sm tracking-wide font-medium" style={{ color: COLORS.bg }}>
+            {isEditing ? "Zapisz zmiany" : "Zapisz check-in"}
+          </span>
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ---------------------------------------------------------
    EKRAN KALENDARZA
 --------------------------------------------------------- */
 const pad2 = (n) => String(n).padStart(2, "0");
@@ -938,13 +937,42 @@ const WEEKDAYS_PL = ["Pn", "Wt", "Śr", "Cz", "Pt", "So", "Nd"];
 
 const PERIOD_COLOR = "#c1524f"; // stonowana czerwień — wyłącznie do znacznika miesiączki
 
-function CalendarScreen({ entries, periodDays, onTogglePeriod, onEditEntry }) {
+function CalendarScreen({
+  entries,
+  periodDays,
+  onTogglePeriod,
+  onEditEntry,
+  checkins,
+  onOpenCheckin,
+  onNewAttack,
+  onClearAll,
+  todayCheckin,
+}) {
   const [cursor, setCursor] = useState(() => {
     const d = new Date();
     return { year: d.getFullYear(), month: d.getMonth() };
   });
   const [selectedKey, setSelectedKey] = useState(null);
   const [markMode, setMarkMode] = useState(false);
+  const [confirmClear, setConfirmClear] = useState(false);
+
+  const thisMonth = useMemo(() => {
+    const now = new Date();
+    return entries.filter((e) => {
+      const d = new Date(e.date);
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+    });
+  }, [entries]);
+  const monthCount = thisMonth.filter((e) => !e.continuesPrevious).length;
+  const avgPain = entries.length
+    ? (entries.reduce((s, e) => s + e.pain, 0) / entries.length).toFixed(1)
+    : "—";
+  const todayLabel = new Date().toLocaleDateString("pl-PL", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
+  const todayLabelCap = todayLabel.charAt(0).toUpperCase() + todayLabel.slice(1);
 
   const todayKey = dateKey(new Date());
   const periodSet = useMemo(() => new Set(periodDays), [periodDays]);
@@ -1011,26 +1039,152 @@ function CalendarScreen({ entries, periodDays, onTogglePeriod, onEditEntry }) {
 
   const selectedEntries = selectedKey ? entriesByDay[selectedKey] || [] : [];
 
-  const handleDayClick = (k, hasEntries) => {
+  const handleDayClick = (k) => {
     if (markMode) {
       onTogglePeriod(k);
       return;
     }
-    if (hasEntries) setSelectedKey(selectedKey === k ? null : k);
+    setSelectedKey(selectedKey === k ? null : k);
   };
 
   return (
     <div className="flex flex-col h-full animate-fade-in">
-      <div className="px-5 pt-7 pb-4">
-        <p className="text-[11px] uppercase tracking-[0.18em]" style={{ color: COLORS.textMuted }}>
-          Przegląd miesiąca
-        </p>
-        <h1 className="font-serif text-[24px] mt-1" style={{ color: COLORS.textPrimary }}>
-          Kalendarz
-        </h1>
+      <div className="px-5 pt-7 pb-4 flex items-start justify-between">
+        <div>
+          <p className="text-[11px] uppercase tracking-[0.18em]" style={{ color: COLORS.textMuted }}>
+            {todayLabelCap}
+          </p>
+          <h1
+            className="font-serif text-[26px] mt-1 flex items-center gap-2"
+            style={{ color: COLORS.textPrimary }}
+          >
+            Dzienniczek Migren
+            <span
+              className="text-[10px] font-sans font-normal tracking-wide rounded-full px-2 py-0.5"
+              style={{ background: COLORS.surface2, color: COLORS.textSecondary, border: `1px solid ${COLORS.border}` }}
+            >
+              BETA
+            </span>
+          </h1>
+        </div>
+        {entries.length > 0 && (
+          <button
+            onClick={() => setConfirmClear(true)}
+            className="w-9 h-9 rounded-full flex items-center justify-center mt-1 flex-shrink-0"
+            style={{ background: COLORS.surface }}
+            aria-label="Wyczyść wpisy"
+          >
+            <Trash2 size={15} style={{ color: COLORS.textMuted }} />
+          </button>
+        )}
       </div>
 
+      {confirmClear && (
+        <div className="px-5 pb-3 animate-fade-in">
+          <div
+            className="rounded-2xl p-4 border flex flex-col gap-3"
+            style={{ background: COLORS.surface, borderColor: "#b3684f55" }}
+          >
+            <p className="text-[13px]" style={{ color: COLORS.textPrimary }}>
+              Usunąć wszystkie zapisane wpisy? Tej operacji nie można cofnąć.
+            </p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setConfirmClear(false)}
+                className="flex-1 rounded-xl py-2.5 text-sm"
+                style={{ background: COLORS.surface2, color: COLORS.textSecondary }}
+              >
+                Anuluj
+              </button>
+              <button
+                onClick={() => {
+                  onClearAll();
+                  setConfirmClear(false);
+                }}
+                className="flex-1 rounded-xl py-2.5 text-sm"
+                style={{ background: "#5c4a6b", color: COLORS.textPrimary }}
+              >
+                Usuń wszystko
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex-1 overflow-y-auto px-5 pb-24">
+        {/* Statystyki skrócone */}
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <div
+            className="rounded-2xl p-4 border"
+            style={{ background: COLORS.surface, borderColor: COLORS.border }}
+          >
+            <p className="text-[11px] tracking-wide" style={{ color: COLORS.textSecondary }}>
+              Ataki w tym miesiącu
+            </p>
+            <p className="font-serif text-3xl mt-1" style={{ color: COLORS.textPrimary }}>
+              {monthCount}
+            </p>
+          </div>
+          <div
+            className="rounded-2xl p-4 border"
+            style={{ background: COLORS.surface, borderColor: COLORS.border }}
+          >
+            <p className="text-[11px] tracking-wide" style={{ color: COLORS.textSecondary }}>
+              Średni ból
+            </p>
+            <p className="font-serif text-3xl mt-1" style={{ color: painColor(Math.round(avgPain)) }}>
+              {avgPain}
+              <span className="text-sm ml-1" style={{ color: COLORS.textMuted }}>
+                /10
+              </span>
+            </p>
+          </div>
+        </div>
+
+        {/* Przycisk zgłoszenia */}
+        <button
+          onClick={onNewAttack}
+          className="w-full rounded-2xl py-4 flex items-center justify-center gap-2 transition-transform active:scale-[0.98] mb-3"
+          style={{ background: COLORS.accentSoft, border: `1px solid ${COLORS.accent}55` }}
+        >
+          <Plus size={18} style={{ color: COLORS.accent }} strokeWidth={2} />
+          <span className="text-sm tracking-wide" style={{ color: COLORS.textPrimary }}>
+            Zgłoś nowy atak
+          </span>
+        </button>
+
+        {/* Check-in dnia (dzisiaj) */}
+        <button
+          onClick={() => onOpenCheckin()}
+          className="w-full rounded-2xl p-3.5 border flex items-center gap-3 text-left transition-colors active:scale-[0.99] mb-5"
+          style={{ background: `${COLORS.accent}14`, borderColor: `${COLORS.accent}55` }}
+        >
+          <div
+            className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+            style={{ background: `${COLORS.accent}22` }}
+          >
+            <Calendar size={15} style={{ color: COLORS.accent }} />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[13px]" style={{ color: COLORS.textPrimary }}>
+              {todayCheckin ? "Check-in dnia zapisany" : "Dodaj check-in dnia"}
+            </p>
+            <p className="text-[11px] mt-0.5" style={{ color: COLORS.textSecondary }}>
+              {todayCheckin
+                ? `Sen ${todayCheckin.sleepHours} h · nawodnienie ${todayCheckin.hydration} szkl. · stres: ${STRESS_LABELS[todayCheckin.stress - 1].toLowerCase()}`
+                : "Sen, posiłki, nawodnienie, stres — 30 sekund, niezależnie od ataku"}
+            </p>
+          </div>
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {todayCheckin && (
+              <span className="text-[11px]" style={{ color: COLORS.accent }}>
+                Edytuj
+              </span>
+            )}
+            <ChevronLeft size={14} style={{ color: COLORS.accent, transform: "rotate(180deg)" }} />
+          </div>
+        </button>
+
         {/* Nawigacja miesiąca */}
         <div className="flex items-center justify-between mb-3">
           <button
@@ -1100,6 +1254,7 @@ function CalendarScreen({ entries, periodDays, onTogglePeriod, onEditEntry }) {
                   const isToday = k === todayKey;
                   const isSelected = k === selectedKey;
                   const isPeriod = periodSet.has(k);
+                  const hasCheckin = !!checkins[k];
                   const maxPain = dayEntries
                     ? Math.max(...dayEntries.map((e) => e.pain))
                     : null;
@@ -1107,7 +1262,7 @@ function CalendarScreen({ entries, periodDays, onTogglePeriod, onEditEntry }) {
                   return (
                     <button
                       key={di}
-                      onClick={() => handleDayClick(k, !!dayEntries)}
+                      onClick={() => handleDayClick(k)}
                       className="relative aspect-square rounded-xl flex items-center justify-center text-[12px] transition-all"
                       style={{
                         background: c ? `${c}30` : "transparent",
@@ -1122,13 +1277,21 @@ function CalendarScreen({ entries, periodDays, onTogglePeriod, onEditEntry }) {
                       }}
                     >
                       {d.getDate()}
-                      {isPeriod && (
-                        <Droplet
-                          size={11}
-                          className="absolute bottom-0.5 left-1/2 -translate-x-1/2"
-                          color={PERIOD_COLOR}
-                          fill={PERIOD_COLOR}
-                        />
+                      {(hasCheckin || isPeriod) && (
+                        <div className="absolute bottom-0.5 left-1/2 -translate-x-1/2 flex items-center gap-1">
+                          {hasCheckin && (
+                            <span
+                              className="rounded-full"
+                              style={{ width: 5, height: 5, background: COLORS.accent }}
+                            />
+                          )}
+                          {isPeriod && (
+                            <span
+                              className="rounded-full"
+                              style={{ width: 5, height: 5, background: PERIOD_COLOR }}
+                            />
+                          )}
+                        </div>
                       )}
                     </button>
                   );
@@ -1139,7 +1302,7 @@ function CalendarScreen({ entries, periodDays, onTogglePeriod, onEditEntry }) {
         </div>
 
         {/* Szybki podgląd wybranego dnia */}
-        {selectedKey && selectedEntries.length > 0 && (
+        {selectedKey && !markMode && (
           <div className="mt-4 animate-fade-in flex flex-col gap-2.5">
             <p className="text-[11px] uppercase tracking-[0.18em]" style={{ color: COLORS.textMuted }}>
               {new Date(selectedKey).toLocaleDateString("pl-PL", {
@@ -1147,6 +1310,11 @@ function CalendarScreen({ entries, periodDays, onTogglePeriod, onEditEntry }) {
                 month: "long",
               })}
             </p>
+            {selectedEntries.length === 0 && (
+              <p className="text-[12px]" style={{ color: COLORS.textMuted }}>
+                Brak zgłoszonych ataków tego dnia.
+              </p>
+            )}
             {selectedEntries.map((e) => (
               <div
                 key={e.id}
@@ -1224,6 +1392,38 @@ function CalendarScreen({ entries, periodDays, onTogglePeriod, onEditEntry }) {
                 )}
               </div>
             ))}
+
+            {/* Check-in tego dnia */}
+            <button
+              onClick={() => onOpenCheckin(selectedKey)}
+              className="w-full rounded-2xl p-3.5 border flex items-center gap-3 text-left transition-colors active:scale-[0.99]"
+              style={{ background: `${COLORS.accent}14`, borderColor: `${COLORS.accent}55` }}
+            >
+              <div
+                className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+                style={{ background: `${COLORS.accent}22` }}
+              >
+                <Calendar size={15} style={{ color: COLORS.accent }} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[13px]" style={{ color: COLORS.textPrimary }}>
+                  {checkins[selectedKey] ? "Check-in dnia zapisany" : "Dodaj check-in dnia"}
+                </p>
+                <p className="text-[11px] mt-0.5" style={{ color: COLORS.textSecondary }}>
+                  {checkins[selectedKey]
+                    ? `Sen ${checkins[selectedKey].sleepHours} h · nawodnienie ${checkins[selectedKey].hydration} szkl. · stres: ${STRESS_LABELS[checkins[selectedKey].stress - 1].toLowerCase()}`
+                    : "Sen, posiłki, nawodnienie, stres"}
+                </p>
+              </div>
+              <div className="flex items-center gap-1 flex-shrink-0">
+                {checkins[selectedKey] && (
+                  <span className="text-[11px]" style={{ color: COLORS.accent }}>
+                    Edytuj
+                  </span>
+                )}
+                <ChevronLeft size={14} style={{ color: COLORS.accent, transform: "rotate(180deg)" }} />
+              </div>
+            </button>
           </div>
         )}
 
@@ -1246,9 +1446,21 @@ function CalendarScreen({ entries, periodDays, onTogglePeriod, onEditEntry }) {
             </div>
           ))}
           <div className="flex items-center gap-1.5">
-            <Droplet size={13} color={PERIOD_COLOR} fill={PERIOD_COLOR} />
+            <span
+              className="rounded-full"
+              style={{ width: 8, height: 8, background: PERIOD_COLOR }}
+            />
             <span className="text-[11px]" style={{ color: COLORS.textSecondary }}>
               Miesiączka
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span
+              className="rounded-full"
+              style={{ width: 8, height: 8, background: COLORS.accent }}
+            />
+            <span className="text-[11px]" style={{ color: COLORS.textSecondary }}>
+              Check-in dnia
             </span>
           </div>
         </div>
@@ -1271,6 +1483,89 @@ function CalendarScreen({ entries, periodDays, onTogglePeriod, onEditEntry }) {
             <p>Dni miesiączki: <span style={{ color: PERIOD_COLOR }}>{monthSummary.period}</span></p>
             <p>Ataki w trakcie miesiączki: <span style={{ color: PERIOD_COLOR }}>{monthSummary.overlap}</span></p>
           </div>
+        </div>
+
+        {/* Ostatnie wpisy */}
+        <p
+          className="text-[11px] uppercase tracking-[0.18em] mb-3 mt-6"
+          style={{ color: COLORS.textMuted }}
+        >
+          Ostatnie wpisy
+        </p>
+        <div className="flex flex-col gap-2.5">
+          {entries.map((e) => (
+            <button
+              key={e.id}
+              onClick={() => onEditEntry(e)}
+              className="rounded-2xl p-3.5 border flex items-center gap-3 text-left w-full transition-colors active:scale-[0.99]"
+              style={{ background: COLORS.surface, borderColor: COLORS.border }}
+            >
+              <div
+                className="w-11 h-11 rounded-full flex items-center justify-center flex-shrink-0"
+                style={{
+                  background: `${painColor(e.pain)}22`,
+                  border: `1px solid ${painColor(e.pain)}66`,
+                }}
+              >
+                <span className="font-serif text-sm" style={{ color: painColor(e.pain) }}>
+                  {e.pain}
+                </span>
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm flex items-center gap-1.5" style={{ color: COLORS.textPrimary }}>
+                    {fmtDate(e.date)}
+                    {e.continuesPrevious && (
+                      <span
+                        className="text-[9px] uppercase tracking-wide rounded-full px-1.5 py-0.5"
+                        style={{ background: COLORS.surface2, color: COLORS.textMuted, border: `1px solid ${COLORS.border}` }}
+                      >
+                        kontynuacja
+                      </span>
+                    )}
+                  </span>
+                  <span className="text-[11px]" style={{ color: painColor(e.pain) }}>
+                    {painLabel(e.pain)}
+                  </span>
+                </div>
+                <p className="text-[12px] mt-0.5 truncate" style={{ color: COLORS.textSecondary }}>
+                  {e.symptoms.length
+                    ? e.symptoms.map((s) => SYMPTOMS.find((x) => x.id === s)?.label).join(" · ")
+                    : "Brak zanotowanych objawów"}
+                </p>
+                {(locationLabels(e.location) || e.duration) && (
+                  <p className="text-[11px] mt-0.5 truncate" style={{ color: COLORS.textMuted }}>
+                    {[
+                      e.location ? locationLabels(e.location) : null,
+                      e.duration ? DURATIONS.find((x) => x.id === e.duration)?.label : null,
+                    ]
+                      .filter(Boolean)
+                      .join(" · ")}
+                  </p>
+                )}
+                {e.dietNote && (
+                  <p className="text-[11px] mt-0.5 truncate italic" style={{ color: COLORS.textMuted }}>
+                    Dieta: {e.dietNote}
+                  </p>
+                )}
+                {e.note && (
+                  <p className="text-[11px] mt-0.5 truncate italic" style={{ color: COLORS.textMuted }}>
+                    {e.note}
+                  </p>
+                )}
+              </div>
+            </button>
+          ))}
+          {entries.length === 0 && (
+            <div
+              className="rounded-2xl p-6 text-center border"
+              style={{ background: COLORS.surface, borderColor: COLORS.border }}
+            >
+              <p className="text-sm" style={{ color: COLORS.textSecondary }}>
+                Brak wpisów. Dodaj pierwszy atak, aby zacząć śledzić wzorce.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -1496,43 +1791,8 @@ function StatsScreen({ entries, periodDays, onExportData, onImportData, onExport
               śr. {avgPain}
             </span>
           </div>
-          <div style={{ width: "100%", height: 160 }}>
-            <ResponsiveContainer>
-              <LineChart data={chartData} margin={{ left: -20, right: 8, top: 8 }}>
-                <CartesianGrid stroke={COLORS.border} strokeDasharray="3 3" vertical={false} />
-                <XAxis
-                  dataKey="date"
-                  tick={{ fill: COLORS.textMuted, fontSize: 10 }}
-                  axisLine={{ stroke: COLORS.border }}
-                  tickLine={false}
-                />
-                <YAxis
-                  domain={[0, 10]}
-                  tick={{ fill: COLORS.textMuted, fontSize: 10 }}
-                  axisLine={false}
-                  tickLine={false}
-                  width={24}
-                />
-                <Tooltip
-                  contentStyle={{
-                    background: COLORS.surface2,
-                    border: `1px solid ${COLORS.border}`,
-                    borderRadius: 10,
-                    fontSize: 12,
-                    color: COLORS.textPrimary,
-                  }}
-                  labelStyle={{ color: COLORS.textSecondary }}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="Ból"
-                  stroke={COLORS.accent}
-                  strokeWidth={2}
-                  dot={{ r: 3, fill: COLORS.accent, strokeWidth: 0 }}
-                  activeDot={{ r: 5 }}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+          <div style={{ width: "100%" }}>
+            <PainTrendChart data={chartData} />
           </div>
         </div>
 
@@ -1830,7 +2090,6 @@ function StatsScreen({ entries, periodDays, onExportData, onImportData, onExport
 --------------------------------------------------------- */
 function TabBar({ screen, setScreen }) {
   const tabs = [
-    { id: "home", label: "Start", icon: Home },
     { id: "calendar", label: "Kalendarz", icon: Calendar },
     { id: "stats", label: "Statystyki", icon: BarChart3 },
   ];
@@ -1872,16 +2131,19 @@ const STORAGE_KEY = "dziennik-migren:entries";
 const STORAGE_KEY_PERIOD = "dziennik-migren:period-days";
 const STORAGE_KEY_NAME = "dziennik-migren:patient-name";
 const STORAGE_KEY_DISCLAIMER = "dziennik-migren:disclaimer-accepted";
+const STORAGE_KEY_CHECKINS = "dziennik-migren:checkins";
 
-export default function App() {
-  const [screen, setScreen] = useState("home"); // 'home' | 'form' | 'stats' | 'calendar'
+function App() {
+  const [screen, setScreen] = useState("calendar"); // 'calendar' | 'form' | 'checkin' | 'stats'
   const [entries, setEntries] = useState([]);
   const [periodDays, setPeriodDays] = useState([]);
+  const [checkins, setCheckins] = useState({});
   const [patientName, setPatientName] = useState("");
   const [disclaimerAccepted, setDisclaimerAccepted] = useState(true);
   const [onboardingStep, setOnboardingStep] = useState(1);
   const [loaded, setLoaded] = useState(false);
   const [editingEntry, setEditingEntry] = useState(null);
+  const [checkinDate, setCheckinDate] = useState(() => dateKey(new Date()));
 
   // Wczytaj zapisane wpisy i dni miesiączki przy starcie
   React.useEffect(() => {
@@ -1911,6 +2173,13 @@ export default function App() {
         setDisclaimerAccepted(disclaimerResult ? disclaimerResult.value === "true" : false);
       } catch (e) {
         setDisclaimerAccepted(false);
+      }
+      try {
+        const checkinsResult = await window.storage.get(STORAGE_KEY_CHECKINS);
+        const parsedCheckins = checkinsResult ? JSON.parse(checkinsResult.value) : null;
+        setCheckins(parsedCheckins || {});
+      } catch (e) {
+        setCheckins({});
       } finally {
         setLoaded(true);
       }
@@ -1937,6 +2206,13 @@ export default function App() {
     window.storage.set(STORAGE_KEY_NAME, patientName, false).catch(() => {});
   }, [patientName, loaded]);
 
+  React.useEffect(() => {
+    if (!loaded) return;
+    window.storage
+      .set(STORAGE_KEY_CHECKINS, JSON.stringify(checkins), false)
+      .catch(() => {});
+  }, [checkins, loaded]);
+
   const acceptDisclaimer = () => {
     setDisclaimerAccepted(true);
     window.storage.set(STORAGE_KEY_DISCLAIMER, "true", false).catch(() => {});
@@ -1956,7 +2232,7 @@ export default function App() {
         : [entry, ...prev];
     });
     setEditingEntry(null);
-    setScreen("home");
+    setScreen("calendar");
   };
 
   const openNewAttack = () => {
@@ -1969,6 +2245,25 @@ export default function App() {
     setScreen("form");
   };
 
+  const openCheckin = (key = dateKey(new Date())) => {
+    setCheckinDate(key);
+    setScreen("checkin");
+  };
+
+  const handleSaveCheckin = (key, data) => {
+    setCheckins((prev) => ({ ...prev, [key]: data }));
+    setScreen("calendar");
+  };
+
+  const handleDeleteCheckin = (key) => {
+    setCheckins((prev) => {
+      const next = { ...prev };
+      delete next[key];
+      return next;
+    });
+    setScreen("calendar");
+  };
+
   const handleClearAll = () => {
     setEntries([]);
   };
@@ -1976,7 +2271,7 @@ export default function App() {
   const handleDeleteEntry = (id) => {
     setEntries((prev) => prev.filter((e) => e.id !== id));
     setEditingEntry(null);
-    setScreen("home");
+    setScreen("calendar");
   };
 
   const triggerDownload = (filename, content, mimeType) => {
@@ -1992,7 +2287,7 @@ export default function App() {
   };
 
   const handleExportData = () => {
-    const payload = JSON.stringify({ entries, periodDays }, null, 2);
+    const payload = JSON.stringify({ entries, periodDays, checkins }, null, 2);
     const today = dateKey(new Date());
     triggerDownload(`dziennik-migren-kopia-${today}.json`, payload, "application/json");
   };
@@ -2004,6 +2299,7 @@ export default function App() {
         const data = JSON.parse(reader.result);
         if (Array.isArray(data.entries)) setEntries(data.entries);
         if (Array.isArray(data.periodDays)) setPeriodDays(data.periodDays);
+        if (data.checkins && typeof data.checkins === "object") setCheckins(data.checkins);
       } catch (e) {
         alert("Nie udało się odczytać pliku. Sprawdź, czy to poprawna kopia zapasowa.");
       }
@@ -2012,6 +2308,25 @@ export default function App() {
   };
 
   const handleExportReport = () => {
+    const checkinList = Object.entries(checkins).sort(([a], [b]) => (a < b ? -1 : 1));
+    const checkinSummary = (() => {
+      if (!checkinList.length) return null;
+      const n = checkinList.length;
+      const avgSleep = (
+        checkinList.reduce((s, [, c]) => s + (c.sleepHours || 0), 0) / n
+      ).toFixed(1);
+      const avgHydration = (
+        checkinList.reduce((s, [, c]) => s + (c.hydration || 0), 0) / n
+      ).toFixed(1);
+      const avgStress = (
+        checkinList.reduce((s, [, c]) => s + (c.stress || 0), 0) / n
+      ).toFixed(1);
+      const regularPct = Math.round(
+        (checkinList.filter(([, c]) => c.mealsRegular).length / n) * 100
+      );
+      return { n, avgSleep, avgHydration, avgStress, regularPct };
+    })();
+
     const sorted = [...entries].sort((a, b) => new Date(a.date) - new Date(b.date));
     const uniqueAttackCount = entries.filter((e) => !e.continuesPrevious).length;
     const avgPain = entries.length
@@ -2047,6 +2362,13 @@ export default function App() {
       `Stosowane leki: ${medsSet.size ? [...medsSet].join(", ") : "brak"}`,
       `Dni miesiączki w historii: ${periodDays.length}`,
       "",
+      checkinSummary ? "CHECK-INY DNIA (dane niezależne od ataków):" : null,
+      checkinSummary ? `Liczba zapisanych dni: ${checkinSummary.n}` : null,
+      checkinSummary ? `Średni czas snu: ${checkinSummary.avgSleep} h` : null,
+      checkinSummary ? `Dni z regularnymi posiłkami: ${checkinSummary.regularPct}%` : null,
+      checkinSummary ? `Średnie nawodnienie: ${checkinSummary.avgHydration} szklanek` : null,
+      checkinSummary ? `Średni poziom stresu: ${checkinSummary.avgStress} / 5` : null,
+      checkinSummary ? "" : null,
       "SZCZEGÓŁOWA HISTORIA ATAKÓW:",
       ...sorted.map((e) => {
         const parts = [
@@ -2264,29 +2586,34 @@ export default function App() {
             )
           ) : (
             <>
-              {screen === "home" && (
-                <HomeScreen
-                  entries={entries}
-                  onNewAttack={openNewAttack}
-                  onOpenStats={() => setScreen("stats")}
-                  onClearAll={handleClearAll}
-                  onEditEntry={openEditEntry}
-                />
-              )}
               {screen === "form" && (
                 <FormScreen
-                  onCancel={() => { setEditingEntry(null); setScreen("home"); }}
+                  onCancel={() => { setEditingEntry(null); setScreen("calendar"); }}
                   onSave={handleSave}
                   onDelete={handleDeleteEntry}
                   editingEntry={editingEntry}
+                />
+              )}
+              {screen === "checkin" && (
+                <CheckinForm
+                  onCancel={() => setScreen("calendar")}
+                  onSave={handleSaveCheckin}
+                  onDelete={handleDeleteCheckin}
+                  editingCheckin={checkins[checkinDate] || null}
+                  dateKeyStr={checkinDate}
                 />
               )}
               {screen === "calendar" && (
                 <CalendarScreen
                   entries={entries}
                   periodDays={periodDays}
+                  checkins={checkins}
+                  onOpenCheckin={openCheckin}
                   onTogglePeriod={togglePeriodDay}
                   onEditEntry={openEditEntry}
+                  onNewAttack={openNewAttack}
+                  onClearAll={handleClearAll}
+                  todayCheckin={checkins[dateKey(new Date())] || null}
                 />
               )}
               {screen === "stats" && (
@@ -2301,7 +2628,9 @@ export default function App() {
                 />
               )}
 
-              {screen !== "form" && <TabBar screen={screen} setScreen={setScreen} />}
+              {screen !== "form" && screen !== "checkin" && (
+                <TabBar screen={screen} setScreen={setScreen} />
+              )}
             </>
           )}
         </div>
