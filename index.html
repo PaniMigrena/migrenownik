@@ -19,7 +19,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500&family=Work+Sans:wght@400;500&display=swap" rel="stylesheet" />
 
-<link rel="stylesheet" href="./landing.css?v=3" />
+<link rel="stylesheet" href="./landing.css?v=4" />
 </head>
 <body>
 
@@ -39,6 +39,13 @@
       <a class="cta" href="./migrenownik/" id="cta-migrenownik">
         Przejdź do Migrenownika
       </a>
+
+      <div class="ebook-teaser">
+        <p class="ebook-teaser-text">Piszę e-book „Migrena Oswojona” — 30-dniowy plan działania dla osób z migreną.</p>
+        <a class="cta cta--secondary" href="./migrena-oswojona/" id="cta-ebook">
+          Zapisz się na listę oczekujących
+        </a>
+      </div>
 
       <a class="secondary-link"
          href="https://www.instagram.com/panimigrena.pl"
@@ -64,6 +71,18 @@
         gtag('event', 'cta_migrenownik_click', {
           event_category: 'engagement',
           event_label: 'landing_to_migrenownik'
+        });
+      }
+    });
+  </script>
+
+  <!-- Zdarzenie: kliknięcie CTA "Zapisz się na listę oczekujących" (e-book) -->
+  <script>
+    document.getElementById('cta-ebook').addEventListener('click', function () {
+      if (typeof gtag === 'function') {
+        gtag('event', 'cta_ebook_click', {
+          event_category: 'engagement',
+          event_label: 'landing_to_ebook_waitlist'
         });
       }
     });

@@ -140,6 +140,35 @@ body {
   outline-offset: 3px;
 }
 
+/* E-book teaser: krótka zapowiedź + drugorzędny CTA pod główną akcją */
+.ebook-teaser {
+  margin-top: 36px;
+  padding-top: 28px;
+  border-top: 1px solid var(--accent-line);
+}
+
+.ebook-teaser-text {
+  font-size: 0.9rem;
+  line-height: 1.55;
+  color: var(--ink-soft);
+  max-width: 380px;
+  margin: 0 auto 16px;
+}
+
+.cta--secondary {
+  color: var(--ink);
+  background: transparent;
+  border: 1px solid var(--accent-line);
+  padding: 14px 32px;
+  font-size: 0.92rem;
+}
+
+.cta--secondary:hover {
+  background: var(--surface);
+  border-color: var(--accent);
+  color: var(--ink);
+}
+
 .secondary-link {
   display: block;
   margin-top: 22px;
